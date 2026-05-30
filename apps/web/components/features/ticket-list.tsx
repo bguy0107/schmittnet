@@ -85,7 +85,7 @@ export function TicketList({ role }: TicketListProps) {
 
       {/* List */}
       {isLoading && (
-        <div className="py-12 text-center text-sm text-gray-500">Loading tickets…</div>
+        <div className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">Loading tickets…</div>
       )}
 
       {isError && (
@@ -96,24 +96,24 @@ export function TicketList({ role }: TicketListProps) {
       )}
 
       {data && data.rows.length === 0 && (
-        <div className="py-12 text-center text-sm text-gray-500">No tickets found.</div>
+        <div className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">No tickets found.</div>
       )}
 
       {data && data.rows.length > 0 && (
-        <div className="overflow-hidden rounded-lg border bg-white shadow-sm">
+        <div className="overflow-hidden rounded-lg border bg-white shadow-sm dark:bg-gray-900">
           <ul className="divide-y">
             {data.rows.map((ticket) => (
               <li key={ticket.id}>
                 <Link
                   href={`/tickets/${ticket.id}`}
-                  className="flex items-start justify-between gap-3 px-4 py-4 transition-colors hover:bg-gray-50"
+                  className="flex items-start justify-between gap-3 px-4 py-4 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800"
                 >
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
                       {ticket.priority === "P0" && (
                         <span className="text-base" aria-label="Service-impacting">🚨</span>
                       )}
-                      <span className="font-mono text-xs text-gray-400">
+                      <span className="font-mono text-xs text-gray-400 dark:text-gray-500">
                         #{ticket.id.slice(0, 8).toUpperCase()}
                       </span>
                       <Badge variant={statusVariant(ticket.status)}>
@@ -121,15 +121,15 @@ export function TicketList({ role }: TicketListProps) {
                       </Badge>
                       <Badge variant="outline">{ticket.category}</Badge>
                     </div>
-                    <p className="line-clamp-2 text-sm text-gray-700">{ticket.description}</p>
-                    <p className="text-xs text-gray-400">
+                    <p className="line-clamp-2 text-sm text-gray-700 dark:text-gray-200">{ticket.description}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">
                       {ticket.location.name}
                       {ticket.assignee ? ` · ${ticket.assignee.name}` : ""}
                       {" · "}
                       {formatDateTime(ticket.createdAt)}
                     </p>
                   </div>
-                  <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-gray-400" aria-hidden="true" />
+                  <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500" aria-hidden="true" />
                 </Link>
               </li>
             ))}
@@ -139,7 +139,7 @@ export function TicketList({ role }: TicketListProps) {
 
       {/* Pagination */}
       {data && totalPages > 1 && (
-        <div className="flex items-center justify-between text-sm text-gray-500">
+        <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
           <span>
             {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, data.total)} of {data.total}
           </span>

@@ -17,7 +17,7 @@ function StatCard({ label, value, accent }: StatCardProps) {
         <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className={`text-3xl font-bold ${accent ?? "text-gray-900"}`}>{value}</p>
+        <p className={`text-3xl font-bold ${accent ?? "text-gray-900 dark:text-gray-100"}`}>{value}</p>
       </CardContent>
     </Card>
   );
@@ -28,7 +28,7 @@ export function OwnerDashboard({ ownerId }: { ownerId: string | null }) {
   const { data, isLoading, isError } = useDashboard();
 
   if (isLoading) {
-    return <div className="py-12 text-center text-sm text-gray-500">Loading dashboard…</div>;
+    return <div className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">Loading dashboard…</div>;
   }
 
   if (isError || !data) {
@@ -70,10 +70,10 @@ export function OwnerDashboard({ ownerId }: { ownerId: string | null }) {
               return (
                 <div key={locationName}>
                   <div className="mb-1 flex justify-between text-sm">
-                    <span className="font-medium text-gray-700">{locationName}</span>
-                    <span className="text-gray-500">{count}</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-200">{locationName}</span>
+                    <span className="text-gray-500 dark:text-gray-400">{count}</span>
                   </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
                     <div
                       className="h-2 rounded-full bg-primary"
                       style={{ width: `${pct}%` }}

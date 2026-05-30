@@ -66,7 +66,7 @@ function UsersTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-medium text-gray-500">
+        <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400">
           {users ? `${users.length} users` : "Users"}
         </h2>
         <Button size="sm" onClick={() => { setShowForm((s) => !s); reset(); setFormError(null); }}>
@@ -78,7 +78,7 @@ function UsersTab() {
       {showForm && (
         <form
           onSubmit={handleSubmit((d) => createUser.mutate(d))}
-          className="space-y-3 rounded-lg border bg-gray-50 p-4"
+          className="space-y-3 rounded-lg border bg-gray-50 p-4 dark:bg-gray-800"
         >
           {formError && <Alert variant="destructive"><AlertDescription>{formError}</AlertDescription></Alert>}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -122,12 +122,12 @@ function UsersTab() {
         </form>
       )}
 
-      {isLoading && <div className="py-8 text-center text-sm text-gray-500">Loading…</div>}
+      {isLoading && <div className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">Loading…</div>}
 
       {users && (
-        <div className="overflow-hidden rounded-lg border bg-white">
+        <div className="overflow-hidden rounded-lg border bg-white dark:bg-gray-900">
           <table className="w-full text-sm">
-            <thead className="border-b bg-gray-50 text-xs font-medium text-gray-500">
+            <thead className="border-b bg-gray-50 text-xs font-medium text-gray-500 dark:bg-gray-800 dark:text-gray-400">
               <tr>
                 <th className="px-4 py-3 text-left">Name</th>
                 <th className="px-4 py-3 text-left">Email</th>
@@ -138,9 +138,9 @@ function UsersTab() {
             </thead>
             <tbody className="divide-y">
               {users.map((u) => (
-                <tr key={u.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">{u.name}</td>
-                  <td className="px-4 py-3 text-gray-600">{u.email}</td>
+                <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{u.name}</td>
+                  <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{u.email}</td>
                   <td className="px-4 py-3">
                     <Badge variant="outline">{u.role.replace(/_/g, " ")}</Badge>
                   </td>
@@ -228,7 +228,7 @@ function LocationsTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-medium text-gray-500">
+        <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400">
           {locations ? `${locations.length} locations` : "Locations"}
         </h2>
         <Button size="sm" onClick={() => { setShowForm((s) => !s); reset(); setFormError(null); }}>
@@ -240,7 +240,7 @@ function LocationsTab() {
       {showForm && (
         <form
           onSubmit={handleSubmit((d) => createLocation.mutate(d))}
-          className="space-y-3 rounded-lg border bg-gray-50 p-4"
+          className="space-y-3 rounded-lg border bg-gray-50 p-4 dark:bg-gray-800"
         >
           {formError && <Alert variant="destructive"><AlertDescription>{formError}</AlertDescription></Alert>}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -270,15 +270,15 @@ function LocationsTab() {
         </form>
       )}
 
-      {isLoading && <div className="py-8 text-center text-sm text-gray-500">Loading…</div>}
+      {isLoading && <div className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">Loading…</div>}
 
       {locations && (
         <div className="space-y-2">
           {locations.map((loc) => (
-            <div key={loc.id} className="flex items-center justify-between rounded-lg border bg-white px-4 py-3">
+            <div key={loc.id} className="flex items-center justify-between rounded-lg border bg-white px-4 py-3 dark:bg-gray-900">
               <div>
-                <p className="font-medium text-gray-900">{loc.name}</p>
-                <p className="text-xs text-gray-500">{loc.owner.name}{loc.address ? ` · ${loc.address}` : ""}</p>
+                <p className="font-medium text-gray-900 dark:text-gray-100">{loc.name}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{loc.owner.name}{loc.address ? ` · ${loc.address}` : ""}</p>
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant={loc.qrActive ? "success" : "secondary"}>
@@ -313,13 +313,13 @@ export function AdminPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-1 rounded-lg border bg-white p-1 shadow-sm w-fit">
+      <div className="flex w-fit gap-1 rounded-lg border bg-white p-1 shadow-sm dark:bg-gray-900">
         {(["users", "locations"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={`rounded-md px-4 py-2 text-sm font-medium capitalize transition-colors ${
-              tab === t ? "bg-primary text-primary-foreground shadow-sm" : "text-gray-600 hover:bg-gray-100"
+              tab === t ? "bg-primary text-primary-foreground shadow-sm" : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
             }`}
           >
             {t}

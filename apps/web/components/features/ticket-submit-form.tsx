@@ -109,7 +109,7 @@ export function TicketSubmitForm({ token }: { token: string }) {
   }
 
   if (locationLoading) {
-    return <div className="py-12 text-center text-sm text-gray-500">Loading…</div>;
+    return <div className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">Loading…</div>;
   }
 
   if (locationError || !location) {
@@ -124,12 +124,12 @@ export function TicketSubmitForm({ token }: { token: string }) {
 
   if (confirmation) {
     return (
-      <div className="rounded-lg bg-white p-8 text-center shadow-sm">
+      <div className="rounded-lg bg-white p-8 text-center shadow-sm dark:bg-gray-900">
         <CheckCircle2 className="mx-auto mb-4 h-12 w-12 text-green-500" aria-hidden="true" />
-        <h2 className="text-lg font-semibold text-gray-900">Ticket submitted!</h2>
-        <p className="mt-1 text-sm text-gray-500">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Ticket submitted!</h2>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Your reference code is{" "}
-          <strong className="font-mono text-base text-gray-900">{confirmation.referenceCode}</strong>
+          <strong className="font-mono text-base text-gray-900 dark:text-gray-100">{confirmation.referenceCode}</strong>
           . Take a note of it in case you need to follow up.
         </p>
       </div>
@@ -139,8 +139,8 @@ export function TicketSubmitForm({ token }: { token: string }) {
   const isDisabled = isSubmitting || uploading;
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 rounded-lg bg-white p-6 shadow-sm" noValidate>
-      <div className="rounded-md bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 rounded-lg bg-white p-6 shadow-sm dark:bg-gray-900" noValidate>
+      <div className="rounded-md bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-200">
         📍 {location.name}
       </div>
 
@@ -179,7 +179,7 @@ export function TicketSubmitForm({ token }: { token: string }) {
             <input type="radio" value="NORMAL" {...register("urgency")} className="sr-only" />
             Normal
           </label>
-          <label className="flex cursor-pointer items-center justify-center rounded-md border-2 border-orange-200 p-3 text-sm font-medium text-orange-700 transition-colors has-[:checked]:border-orange-500 has-[:checked]:bg-orange-50">
+          <label className="flex cursor-pointer items-center justify-center rounded-md border-2 border-orange-200 p-3 text-sm font-medium text-orange-700 transition-colors has-[:checked]:border-orange-500 has-[:checked]:bg-orange-50 dark:border-orange-800 dark:text-orange-400 dark:has-[:checked]:border-orange-500 dark:has-[:checked]:bg-orange-950">
             <input type="radio" value="SERVICE_IMPACTING" {...register("urgency")} className="sr-only" />
             🚨 Service Down
           </label>
@@ -223,13 +223,13 @@ export function TicketSubmitForm({ token }: { token: string }) {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-gray-300 bg-gray-50 py-6 text-sm text-gray-500 transition-colors hover:border-primary hover:bg-primary/5"
+          className="flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-gray-300 bg-gray-50 py-6 text-sm text-gray-500 transition-colors hover:border-primary hover:bg-primary/5 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400"
           aria-describedby={mediaError ? "media-error" : undefined}
         >
           {mediaFile ? (
             <>
               <Camera className="h-6 w-6 text-green-500" />
-              <span className="font-medium text-gray-700">{mediaFile.name}</span>
+              <span className="font-medium text-gray-700 dark:text-gray-200">{mediaFile.name}</span>
               <span className="text-xs text-gray-400">
                 {(mediaFile.size / 1024 / 1024).toFixed(1)} MB — tap to change
               </span>

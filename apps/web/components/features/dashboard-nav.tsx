@@ -6,6 +6,7 @@ import { signOut } from "next-auth/react";
 import { LogOut, Ticket, BarChart2, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import type { Role } from "@schmittnet/types";
 
 interface DashboardNavProps {
@@ -46,12 +47,12 @@ export function DashboardNav({ user }: DashboardNavProps) {
   const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(user.role));
 
   return (
-    <nav className="border-b bg-white" aria-label="Main navigation">
+    <nav className="border-b bg-white dark:bg-gray-900" aria-label="Main navigation">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-14 items-center justify-between">
           {/* Logo + nav links */}
           <div className="flex items-center gap-6">
-            <span className="text-base font-bold text-gray-900">SchmittNet</span>
+            <span className="text-base font-bold text-gray-900 dark:text-gray-100">SchmittNet</span>
             <div className="hidden gap-1 sm:flex">
               {visibleItems.map((item) => (
                 <Link
@@ -61,7 +62,7 @@ export function DashboardNav({ user }: DashboardNavProps) {
                     "flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                     pathname.startsWith(item.href)
                       ? "bg-primary/10 text-primary"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-100",
                   )}
                 >
                   {item.icon}
@@ -73,9 +74,10 @@ export function DashboardNav({ user }: DashboardNavProps) {
 
           {/* User + sign out */}
           <div className="flex items-center gap-3">
-            <span className="hidden text-sm text-gray-500 sm:block">
+            <span className="hidden text-sm text-gray-500 dark:text-gray-400 sm:block">
               {user.name ?? user.email}
             </span>
+            <ThemeToggle />
             <Button
               variant="ghost"
               size="icon"
@@ -97,7 +99,7 @@ export function DashboardNav({ user }: DashboardNavProps) {
                 "flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 pathname.startsWith(item.href)
                   ? "bg-primary/10 text-primary"
-                  : "text-gray-600 hover:bg-gray-100",
+                  : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800",
               )}
             >
               {item.icon}
