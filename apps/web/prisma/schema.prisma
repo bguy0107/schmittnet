@@ -1,0 +1,218 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  SUPER_ADMIN
+  OWNER
+  OWNER_STAFF
+  TECHNICIAN
+}
+
+enum Category {
+  IT
+  MAINTENANCE
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  ON_HOLD
+  AWAITING_APPROVAL
+  RESOLVED
+  CANCELLED
+}
+
+enum Priority {
+  P0
+  P1
+  P2
+  NORMAL
+}
+
+enum MediaType {
+  PHOTO
+  VIDEO
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  DECLINED
+}
+
+// ─── Auth.js v5 adapter models ────────────────────────────────────────────────
+
+// Included for OAuth extensibility; not used by Credentials provider in v1.
+model Account {
+  id                String  @id @default(uuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ─── Application models ───────────────────────────────────────────────────────
+
+model Owner {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  locations Location[]
+  users     User[]
+
+  @@map("owners")
+}
+
+model User {
+  id                  String     @id @default(uuid())
+  email               String     @unique
+  // Auth.js adapter requires name + emailVerified nullable
+  name                String?
+  emailVerified       DateTime?  @map("email_verified")
+  image               String?
+  role                Role
+  categories          Category[]
+  notificationDiscord String?    @map("notification_discord")
+  notificationEmail   Boolean    @default(true) @map("notification_email")
+  ownerId             String?    @map("owner_id")
+  passwordHash        String     @map("password_hash")
+  isActive            Boolean    @default(true) @map("is_active")
+  createdAt           DateTime   @default(now()) @map("created_at")
+  updatedAt           DateTime   @updatedAt @map("updated_at")
+
+  owner              Owner?           @relation(fields: [ownerId], references: [id])
+  accounts           Account[]
+  sessions           Session[]
+  assignedTickets    Ticket[]         @relation("AssignedTechnician")
+  notes              TicketNote[]
+  approvalsRequested TicketApproval[] @relation("RequestedBy")
+  approvalsActioned  TicketApproval[] @relation("ActionedBy")
+
+  @@map("users")
+}
+
+model Location {
+  id        String   @id @default(uuid())
+  name      String
+  ownerId   String   @map("owner_id")
+  qrToken   String   @unique @map("qr_token")
+  qrActive  Boolean  @default(true) @map("qr_active")
+  address   String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  owner   Owner    @relation(fields: [ownerId], references: [id])
+  tickets Ticket[]
+
+  @@map("locations")
+}
+
+model Ticket {
+  id             String       @id @default(uuid())
+  locationId     String       @map("location_id")
+  category       Category
+  description    String
+  status         TicketStatus @default(OPEN)
+  deadline       DateTime?
+  assignedTo     String?      @map("assigned_to")
+  priority       Priority     @default(NORMAL)
+  acknowledgedAt DateTime?    @map("acknowledged_at")
+  onHoldReason   String?      @map("on_hold_reason")
+  resolvedAt     DateTime?    @map("resolved_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  location  Location         @relation(fields: [locationId], references: [id])
+  assignee  User?            @relation("AssignedTechnician", fields: [assignedTo], references: [id])
+  media     TicketMedia[]
+  notes     TicketNote[]
+  approvals TicketApproval[]
+
+  @@map("tickets")
+}
+
+model TicketMedia {
+  id         String    @id @default(uuid())
+  ticketId   String    @map("ticket_id")
+  storageKey String    @map("storage_key")
+  mediaType  MediaType @map("media_type")
+  mimeType   String    @map("mime_type")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+
+  @@map("ticket_media")
+}
+
+model TicketNote {
+  id        String   @id @default(uuid())
+  ticketId  String   @map("ticket_id")
+  authorId  String   @map("author_id")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  author User   @relation(fields: [authorId], references: [id])
+
+  @@map("ticket_notes")
+}
+
+model TicketApproval {
+  id          String         @id @default(uuid())
+  ticketId    String         @map("ticket_id")
+  requestedBy String         @map("requested_by")
+  approverId  String?        @map("approver_id")
+  status      ApprovalStatus @default(PENDING)
+  notes       String?
+  createdAt   DateTime       @default(now()) @map("created_at")
+  resolvedAt  DateTime?      @map("resolved_at")
+
+  ticket    Ticket @relation(fields: [ticketId], references: [id])
+  requester User   @relation("RequestedBy", fields: [requestedBy], references: [id])
+  approver  User?  @relation("ActionedBy", fields: [approverId], references: [id])
+
+  @@map("ticket_approvals")
+}
