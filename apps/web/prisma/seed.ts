@@ -1,4 +1,4 @@
-import { PrismaClient, Role, Category } from "@prisma/client";
+import { PrismaClient, Role, Category, TicketStatus, Priority } from "@prisma/client";
 import { hash } from "@node-rs/argon2";
 import { randomBytes, createHash } from "crypto";
 
@@ -97,6 +97,154 @@ async function main() {
       role: Role.OWNER,
       ownerId: ownerB.id,
       passwordHash: await hash("OwnerB1234!"),
+    },
+  });
+
+  // Fetch seeded entities needed for ticket relations
+  const tech = await prisma.user.findUniqueOrThrow({ where: { email: "tech@schmittnet.local" }, select: { id: true } });
+  const locA1 = await prisma.location.findUniqueOrThrow({ where: { qrToken: deterministicToken("Location A-1 — Downtown") }, select: { id: true } });
+  const locA2 = await prisma.location.findUniqueOrThrow({ where: { qrToken: deterministicToken("Location A-2 — Westside") }, select: { id: true } });
+  const locA3 = await prisma.location.findUniqueOrThrow({ where: { qrToken: deterministicToken("Location A-3 — Airport") }, select: { id: true } });
+  const locB1 = await prisma.location.findUniqueOrThrow({ where: { qrToken: deterministicToken("Location B-1 — Northgate") }, select: { id: true } });
+  const locB2 = await prisma.location.findUniqueOrThrow({ where: { qrToken: deterministicToken("Location B-2 — Southpark") }, select: { id: true } });
+  const locB3 = await prisma.location.findUniqueOrThrow({ where: { qrToken: deterministicToken("Location B-3 — Eastfield") }, select: { id: true } });
+
+  const now = new Date();
+  const daysAgo = (n: number) => new Date(now.getTime() - n * 86_400_000);
+
+  const seedTickets = [
+    {
+      id: "ticket-seed-01",
+      locationId: locA1.id,
+      category: Category.IT,
+      priority: Priority.P1,
+      status: TicketStatus.OPEN,
+      description: "WiFi is down in the dining area. Staff cannot process mobile orders. Router rebooted but still no connection.",
+      createdAt: daysAgo(1),
+    },
+    {
+      id: "ticket-seed-02",
+      locationId: locB1.id,
+      category: Category.MAINTENANCE,
+      priority: Priority.NORMAL,
+      status: TicketStatus.OPEN,
+      description: "Grease trap inspection due — last serviced 90 days ago. Health inspection is next week.",
+      deadline: new Date(now.getTime() + 6 * 86_400_000),
+      createdAt: daysAgo(2),
+    },
+    {
+      id: "ticket-seed-03",
+      locationId: locA3.id,
+      category: Category.IT,
+      priority: Priority.P0,
+      status: TicketStatus.IN_PROGRESS,
+      description: "POS terminal at register 2 cannot reach payment processor. Card transactions failing. Register 1 is working.",
+      assignedTo: tech.id,
+      acknowledgedAt: daysAgo(0),
+      createdAt: daysAgo(0),
+    },
+    {
+      id: "ticket-seed-04",
+      locationId: locB2.id,
+      category: Category.MAINTENANCE,
+      priority: Priority.P2,
+      status: TicketStatus.IN_PROGRESS,
+      description: "Ceiling fan in the kitchen is wobbling and making noise. Screws appear loose.",
+      assignedTo: tech.id,
+      acknowledgedAt: daysAgo(1),
+      createdAt: daysAgo(3),
+    },
+    {
+      id: "ticket-seed-05",
+      locationId: locA2.id,
+      category: Category.IT,
+      priority: Priority.NORMAL,
+      status: TicketStatus.ON_HOLD,
+      description: "Security camera above the back entrance is offline. Footage shows static since Tuesday.",
+      assignedTo: tech.id,
+      acknowledgedAt: daysAgo(4),
+      onHoldReason: "Waiting for replacement NVR firmware from vendor. ETA 3 business days.",
+      createdAt: daysAgo(5),
+    },
+    {
+      id: "ticket-seed-06",
+      locationId: locA1.id,
+      category: Category.MAINTENANCE,
+      priority: Priority.P1,
+      status: TicketStatus.AWAITING_APPROVAL,
+      description: "HVAC compressor in the main dining room has failed. Unit is 12 years old and not repairable. Replacement quote: $4,200.",
+      assignedTo: tech.id,
+      acknowledgedAt: daysAgo(6),
+      deadline: new Date(now.getTime() + 3 * 86_400_000),
+      createdAt: daysAgo(7),
+    },
+    {
+      id: "ticket-seed-07",
+      locationId: locB3.id,
+      category: Category.IT,
+      priority: Priority.NORMAL,
+      status: TicketStatus.RESOLVED,
+      description: "Managed switch in the server closet was dropping packets intermittently. Staff reported slow network for two days.",
+      assignedTo: tech.id,
+      acknowledgedAt: daysAgo(10),
+      resolvedAt: daysAgo(9),
+      createdAt: daysAgo(11),
+    },
+    {
+      id: "ticket-seed-08",
+      locationId: locA2.id,
+      category: Category.MAINTENANCE,
+      priority: Priority.NORMAL,
+      status: TicketStatus.CANCELLED,
+      description: "Front door hinge squeaking. Staff reported it was already lubricated before tech arrived.",
+      createdAt: daysAgo(14),
+    },
+  ] as const;
+
+  for (const ticket of seedTickets) {
+    await prisma.ticket.upsert({
+      where: { id: ticket.id },
+      update: {},
+      create: ticket,
+    });
+  }
+
+  // Approval request for the AWAITING_APPROVAL ticket
+  await prisma.ticketApproval.upsert({
+    where: { id: "approval-seed-01" },
+    update: {},
+    create: {
+      id: "approval-seed-01",
+      ticketId: "ticket-seed-06",
+      requestedBy: tech.id,
+      status: "PENDING",
+      notes: "Obtained two quotes; lowest is $4,200. Unit is past end-of-life — repair not viable.",
+      createdAt: daysAgo(5),
+    },
+  });
+
+  // Notes on a couple of tickets
+  await prisma.ticketNote.upsert({
+    where: { id: "note-seed-01" },
+    update: {},
+    create: {
+      id: "note-seed-01",
+      ticketId: "ticket-seed-05",
+      authorId: tech.id,
+      content: "Confirmed camera hardware is fine. Issue is NVR firmware bug introduced in v3.1.2. Vendor acknowledged and is issuing patch.",
+      createdAt: daysAgo(3),
+    },
+  });
+
+  await prisma.ticketNote.upsert({
+    where: { id: "note-seed-02" },
+    update: {},
+    create: {
+      id: "note-seed-02",
+      ticketId: "ticket-seed-07",
+      authorId: tech.id,
+      content: "Replaced 8-port managed switch with spare from inventory. Network stable for 24 hours. Closing ticket.",
+      createdAt: daysAgo(9),
     },
   });
 
