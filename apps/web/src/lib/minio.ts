@@ -4,7 +4,7 @@ import { env } from "./env";
 
 const protocol = env.MINIO_USE_SSL ? "https" : "http";
 const internalBase = `${protocol}://${env.MINIO_ENDPOINT}:${env.MINIO_PORT}`;
-const publicBase = env.MINIO_PUBLIC_URL.replace(/\/$/, "");
+const publicBase = env.MINIO_PUBLIC_URL?.replace(/\/$/, "") ?? "";
 
 // S3-compatible client pointed at self-hosted MinIO.
 // forcePathStyle is required for MinIO (it does not use virtual-hosted-style URLs).
