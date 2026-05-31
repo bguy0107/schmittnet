@@ -7,6 +7,7 @@ export interface ListTicketsFilter {
   status?: TicketStatus;
   category?: Category;
   assignedTo?: string;
+  search?: string;
   page?: number;
   pageSize?: number;
 }
@@ -60,13 +61,14 @@ export type TicketDetailRow = Prisma.TicketGetPayload<{ select: typeof ticketDet
 
 export const ticketRepository = {
   async findMany(filter: ListTicketsFilter) {
-    const { page = 1, pageSize = 25, locationIds, status, category, assignedTo } = filter;
+    const { page = 1, pageSize = 25, locationIds, status, category, assignedTo, search } = filter;
 
     const where: Prisma.TicketWhereInput = {
       ...(locationIds ? { locationId: { in: locationIds } } : {}),
       ...(status ? { status } : {}),
       ...(category ? { category } : {}),
       ...(assignedTo ? { assignedTo } : {}),
+      ...(search ? { description: { contains: search, mode: "insensitive" } } : {}),
     };
 
     const [rows, total] = await prisma.$transaction([

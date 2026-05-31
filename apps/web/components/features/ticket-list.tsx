@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useTickets } from "@/hooks/use-tickets";
+import { fetchApi } from "@/lib/api";
 import { formatDateTime } from "@schmittnet/utils";
 import type { Role, TicketStatus, Category } from "@schmittnet/types";
 
@@ -50,11 +52,26 @@ export function TicketList({ role }: TicketListProps) {
   void role;
   const [status, setStatus] = useState("");
   const [category, setCategory] = useState("");
+  const [locationId, setLocationId] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    const t = setTimeout(() => { setSearch(searchInput); setPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
+  const { data: locations } = useQuery({
+    queryKey: ["locations"],
+    queryFn: () => fetchApi<{ id: string; name: string }[]>("/api/locations"),
+  });
 
   const { data, isLoading, isError } = useTickets({
     status: status || undefined,
     category: (category as Category) || undefined,
+    locationId: locationId || undefined,
+    search: search || undefined,
     page,
     pageSize: PAGE_SIZE,
   });
@@ -81,6 +98,25 @@ export function TicketList({ role }: TicketListProps) {
         >
           {CATEGORY_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
+        <select
+          value={locationId}
+          onChange={(e) => { setLocationId(e.target.value); setPage(1); }}
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          aria-label="Filter by location"
+        >
+          <option value="">All locations</option>
+          {locations?.map((loc) => (
+            <option key={loc.id} value={loc.id}>{loc.name}</option>
+          ))}
+        </select>
+        <input
+          type="search"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Search tickets…"
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          aria-label="Search tickets"
+        />
       </div>
 
       {/* List */}

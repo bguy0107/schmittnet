@@ -70,6 +70,8 @@ export const ticketService = {
   async listTickets(actorId: string, actorRole: Role, actorOwnerId: string | null, filter: {
     status?: string;
     category?: string;
+    locationId?: string;
+    search?: string;
     page?: number;
     pageSize?: number;
   }) {
@@ -86,10 +88,19 @@ export const ticketService = {
     }
     // SUPER_ADMIN sees all — locationIds stays undefined
 
+    if (filter.locationId) {
+      if (locationIds) {
+        locationIds = locationIds.includes(filter.locationId) ? [filter.locationId] : [];
+      } else {
+        locationIds = [filter.locationId];
+      }
+    }
+
     return ticketRepository.findMany({
       locationIds,
       status: filter.status as never,
       category: filter.category as never,
+      search: filter.search,
       page: filter.page,
       pageSize: filter.pageSize,
     });

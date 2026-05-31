@@ -24,6 +24,208 @@ interface UserRow {
   isActive: boolean;
   categories: string[];
   ownerId: string | null;
+  notificationEmail: boolean;
+  notificationDiscord: string | null;
+}
+
+const editUserSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  role: z.enum(["SUPER_ADMIN", "OWNER", "OWNER_STAFF", "TECHNICIAN"]),
+  ownerId: z.string().optional(),
+  notificationEmail: z.boolean(),
+  notificationDiscord: z.string().url("Must be a valid URL").or(z.literal("")).optional(),
+  password: z.string().min(12, "Must be at least 12 characters").or(z.literal("")).optional(),
+});
+type EditUserData = z.infer<typeof editUserSchema>;
+
+function EditUserPanel({
+  user,
+  owners,
+  onClose,
+}: {
+  user: UserRow;
+  owners: UserRow[];
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editCategories, setEditCategories] = useState<string[]>(user.categories);
+
+  const updateUser = useMutation({
+    mutationFn: (body: Record<string, unknown>) =>
+      fetchApi(`/api/users/${user.id}`, { method: "PATCH", body: JSON.stringify(body) }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["admin-users"] });
+      onClose();
+    },
+    onError: (err) => setEditError(err instanceof Error ? err.message : "Failed to update user"),
+  });
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm<EditUserData>({
+    resolver: zodResolver(editUserSchema),
+    defaultValues: {
+      name: user.name ?? "",
+      role: user.role as EditUserData["role"],
+      ownerId: user.ownerId ?? "",
+      notificationEmail: user.notificationEmail,
+      notificationDiscord: user.notificationDiscord ?? "",
+      password: "",
+    },
+  });
+
+  const watchedRole = watch("role");
+  const showCategories = watchedRole === "TECHNICIAN";
+  const showOwnerScope = watchedRole === "TECHNICIAN" || watchedRole === "OWNER_STAFF";
+
+  function onSubmit(data: EditUserData) {
+    const payload: Record<string, unknown> = {
+      name: data.name,
+      role: data.role,
+      notificationEmail: data.notificationEmail,
+      notificationDiscord: data.notificationDiscord || null,
+      ownerId: showOwnerScope ? (data.ownerId || null) : null,
+      categories: showCategories ? editCategories : [],
+    };
+    if (data.password) payload.password = data.password;
+    updateUser.mutate(payload);
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose} />
+      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col overflow-y-auto bg-white shadow-xl dark:bg-gray-900">
+        <div className="flex items-center justify-between border-b px-4 py-3">
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Edit user</h2>
+          <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0 text-lg leading-none">
+            ✕
+          </Button>
+        </div>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="flex-1 space-y-4 p-4">
+          {editError && (
+            <Alert variant="destructive">
+              <AlertDescription>{editError}</AlertDescription>
+            </Alert>
+          )}
+
+          <div className="space-y-1">
+            <Label className="text-xs text-gray-500 dark:text-gray-400">Email</Label>
+            <p className="text-sm text-gray-900 dark:text-gray-100">{user.email}</p>
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="e-name">Name</Label>
+            <Input id="e-name" {...register("name")} />
+            {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="e-role">Role</Label>
+            <select
+              id="e-role"
+              className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring dark:bg-gray-900"
+              {...register("role")}
+            >
+              <option value="TECHNICIAN">Technician</option>
+              <option value="OWNER">Owner</option>
+              <option value="OWNER_STAFF">Owner Staff</option>
+              <option value="SUPER_ADMIN">Super Admin</option>
+            </select>
+          </div>
+
+          {showCategories && (
+            <div className="space-y-2">
+              <Label>Ticket categories</Label>
+              <div className="flex gap-4">
+                {(["IT", "MAINTENANCE"] as const).map((cat) => (
+                  <label key={cat} className="flex cursor-pointer items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300 accent-primary"
+                      checked={editCategories.includes(cat)}
+                      onChange={() =>
+                        setEditCategories((prev) =>
+                          prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat],
+                        )
+                      }
+                    />
+                    {cat === "IT" ? "IT" : "Maintenance"}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {showOwnerScope && (
+            <div className="space-y-1">
+              <Label htmlFor="e-owner">
+                Owner scope{" "}
+                <span className="text-gray-400 dark:text-gray-500">(optional)</span>
+              </Label>
+              <select
+                id="e-owner"
+                className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring dark:bg-gray-900"
+                {...register("ownerId")}
+              >
+                <option value="">— All owners —</option>
+                {owners.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name ?? o.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="space-y-1">
+            <Label htmlFor="e-discord">Discord webhook</Label>
+            <Input
+              id="e-discord"
+              placeholder="https://discord.com/api/webhooks/…"
+              {...register("notificationDiscord")}
+            />
+            {errors.notificationDiscord && (
+              <p className="text-xs text-destructive">{errors.notificationDiscord.message}</p>
+            )}
+          </div>
+
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 accent-primary"
+              {...register("notificationEmail")}
+            />
+            Email notifications
+          </label>
+
+          <div className="space-y-1">
+            <Label htmlFor="e-password">New password</Label>
+            <Input
+              id="e-password"
+              type="password"
+              placeholder="Leave blank to keep current"
+              {...register("password")}
+            />
+            {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Button type="submit" size="sm" disabled={updateUser.isPending}>
+              {updateUser.isPending ? "Saving…" : "Save changes"}
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+          </div>
+        </form>
+      </div>
+    </>
+  );
 }
 
 const createUserSchema = z.object({
@@ -40,6 +242,7 @@ function UsersTab() {
   const [showForm, setShowForm] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [editingUser, setEditingUser] = useState<UserRow | null>(null);
 
   const { data: users, isLoading } = useQuery({
     queryKey: ["admin-users"],
@@ -238,7 +441,11 @@ function UsersTab() {
             </thead>
             <tbody className="divide-y">
               {users.map((u) => (
-                <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                <tr
+                  key={u.id}
+                  className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                  onClick={() => setEditingUser(u)}
+                >
                   <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{u.name}</td>
                   <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{u.email}</td>
                   <td className="px-4 py-3">
@@ -252,7 +459,7 @@ function UsersTab() {
                       {u.isActive ? "Active" : "Disabled"}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                     {u.isActive ? (
                       <Button
                         variant="ghost"
@@ -283,6 +490,14 @@ function UsersTab() {
           </table>
         </div>
       )}
+
+      {editingUser && (
+        <EditUserPanel
+          user={editingUser}
+          owners={owners}
+          onClose={() => setEditingUser(null)}
+        />
+      )}
     </div>
   );
 }
@@ -298,6 +513,146 @@ interface LocationRow {
   owner: { name: string };
 }
 
+const editLocationSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters").max(100),
+  address: z.string().max(200).optional(),
+  qrActive: z.boolean(),
+});
+type EditLocationData = z.infer<typeof editLocationSchema>;
+
+function EditLocationPanel({
+  location,
+  onClose,
+}: {
+  location: LocationRow;
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const [editError, setEditError] = useState<string | null>(null);
+
+  const updateLocation = useMutation({
+    mutationFn: (body: Record<string, unknown>) =>
+      fetchApi(`/api/locations/${location.id}`, { method: "PATCH", body: JSON.stringify(body) }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["admin-locations"] });
+      onClose();
+    },
+    onError: (err) => setEditError(err instanceof Error ? err.message : "Failed to update location"),
+  });
+
+  const regenerateToken = useMutation({
+    mutationFn: () =>
+      fetchApi(`/api/locations/${location.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ regenerateToken: true }),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["admin-locations"] });
+      onClose();
+    },
+    onError: (err) => setEditError(err instanceof Error ? err.message : "Failed to regenerate token"),
+  });
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<EditLocationData>({
+    resolver: zodResolver(editLocationSchema),
+    defaultValues: {
+      name: location.name,
+      address: location.address ?? "",
+      qrActive: location.qrActive,
+    },
+  });
+
+  function onSubmit(data: EditLocationData) {
+    updateLocation.mutate({
+      name: data.name,
+      address: data.address || undefined,
+      qrActive: data.qrActive,
+    });
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-black/40" onClick={onClose} />
+      <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-md flex-col overflow-y-auto bg-white shadow-xl dark:bg-gray-900">
+        <div className="flex items-center justify-between border-b px-4 py-3">
+          <h2 className="font-semibold text-gray-900 dark:text-gray-100">Edit location</h2>
+          <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0 text-lg leading-none">
+            ✕
+          </Button>
+        </div>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="flex-1 space-y-4 p-4">
+          {editError && (
+            <Alert variant="destructive">
+              <AlertDescription>{editError}</AlertDescription>
+            </Alert>
+          )}
+
+          <div className="space-y-1">
+            <Label className="text-xs text-gray-500 dark:text-gray-400">Owner</Label>
+            <p className="text-sm text-gray-900 dark:text-gray-100">{location.owner.name}</p>
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="el-name">Location name</Label>
+            <Input id="el-name" {...register("name")} />
+            {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="el-address">
+              Address <span className="text-gray-400 dark:text-gray-500">(optional)</span>
+            </Label>
+            <Input id="el-address" {...register("address")} />
+          </div>
+
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              className="h-4 w-4 rounded border-gray-300 accent-primary"
+              {...register("qrActive")}
+            />
+            QR code active
+          </label>
+
+          <div className="flex gap-2 pt-2">
+            <Button type="submit" size="sm" disabled={updateLocation.isPending}>
+              {updateLocation.isPending ? "Saving…" : "Save changes"}
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+          </div>
+
+          <div className="border-t pt-4">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="text-destructive hover:text-destructive"
+              disabled={regenerateToken.isPending}
+              onClick={() => {
+                if (confirm("Regenerate QR token? The current QR code will stop working.")) {
+                  regenerateToken.mutate();
+                }
+              }}
+            >
+              {regenerateToken.isPending ? "Regenerating…" : "Regenerate QR token"}
+            </Button>
+            <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+              Invalidates the existing QR code immediately.
+            </p>
+          </div>
+        </form>
+      </div>
+    </>
+  );
+}
+
 const createLocationSchema = z.object({
   name: z.string().min(2),
   ownerId: z.string().uuid("Select an owner"),
@@ -309,6 +664,7 @@ function LocationsTab() {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [editingLocation, setEditingLocation] = useState<LocationRow | null>(null);
 
   const { data: locations, isLoading } = useQuery({
     queryKey: ["admin-locations"],
@@ -434,7 +790,8 @@ function LocationsTab() {
           {locations.map((loc) => (
             <div
               key={loc.id}
-              className="flex items-center justify-between rounded-lg border bg-white px-4 py-3 dark:bg-gray-900"
+              className="flex cursor-pointer items-center justify-between rounded-lg border bg-white px-4 py-3 hover:bg-gray-50 dark:bg-gray-900 dark:hover:bg-gray-800"
+              onClick={() => setEditingLocation(loc)}
             >
               <div>
                 <p className="font-medium text-gray-900 dark:text-gray-100">{loc.name}</p>
@@ -443,7 +800,7 @@ function LocationsTab() {
                   {loc.address ? ` · ${loc.address}` : ""}
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                 <Badge variant={loc.qrActive ? "success" : "secondary"}>
                   {loc.qrActive ? "QR active" : "QR inactive"}
                 </Badge>
@@ -468,6 +825,13 @@ function LocationsTab() {
             </div>
           ))}
         </div>
+      )}
+
+      {editingLocation && (
+        <EditLocationPanel
+          location={editingLocation}
+          onClose={() => setEditingLocation(null)}
+        />
       )}
     </div>
   );

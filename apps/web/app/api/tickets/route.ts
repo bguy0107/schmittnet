@@ -14,6 +14,8 @@ export async function GET(req: NextRequest) {
   const filter = {
     status: searchParams.get("status") ?? undefined,
     category: searchParams.get("category") ?? undefined,
+    locationId: searchParams.get("locationId") ?? undefined,
+    search: searchParams.get("search") ?? undefined,
     page: searchParams.get("page") ? Number(searchParams.get("page")) : undefined,
     pageSize: searchParams.get("pageSize") ? Number(searchParams.get("pageSize")) : undefined,
   };

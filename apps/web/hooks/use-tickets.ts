@@ -10,6 +10,8 @@ import type {
 interface TicketFilter {
   status?: string;
   category?: string;
+  locationId?: string;
+  search?: string;
   page?: number;
   pageSize?: number;
 }
@@ -21,6 +23,8 @@ export function useTickets(filter: TicketFilter = {}) {
       const params = new URLSearchParams();
       if (filter.status) params.set("status", filter.status);
       if (filter.category) params.set("category", filter.category);
+      if (filter.locationId) params.set("locationId", filter.locationId);
+      if (filter.search) params.set("search", filter.search);
       if (filter.page) params.set("page", String(filter.page));
       if (filter.pageSize) params.set("pageSize", String(filter.pageSize));
       return fetchApi<PaginatedResponse<TicketSummary>>(`/api/tickets?${params.toString()}`);
