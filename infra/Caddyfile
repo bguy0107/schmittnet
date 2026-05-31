@@ -3,6 +3,9 @@
     # The /storage prefix is stripped before forwarding to MinIO.
     handle /storage/* {
         uri strip_prefix /storage
+        # Presigned URLs are signed with Host: minio:9000. Override the
+        # incoming browser Host header so MinIO's signature check passes.
+        header_up Host minio:9000
         reverse_proxy minio:9000
     }
 
