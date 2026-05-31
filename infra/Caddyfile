@@ -1,5 +1,14 @@
 {$DOMAIN} {
-    reverse_proxy web:3000
+    # MinIO presigned PUT/GET uploads — must be reachable by browsers.
+    # The /storage prefix is stripped before forwarding to MinIO.
+    handle /storage/* {
+        uri strip_prefix /storage
+        reverse_proxy minio:9000
+    }
+
+    handle {
+        reverse_proxy web:3000
+    }
 
     header {
         Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"

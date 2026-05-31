@@ -18,6 +18,10 @@ const envSchema = z.object({
   MINIO_ACCESS_KEY: z.string().min(1),
   MINIO_SECRET_KEY: z.string().min(1),
   MINIO_BUCKET: z.string().default("tickets"),
+  // Public-facing base URL for MinIO — used to rewrite presigned URLs so
+  // browsers can PUT directly without going through the Next.js process.
+  // Must match whatever is reverse-proxied to minio:9000 (e.g. Caddy /storage).
+  MINIO_PUBLIC_URL: z.string().url(),
 
   AUTH_SECRET: z.string().min(32),
 
