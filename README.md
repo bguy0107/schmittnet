@@ -173,14 +173,9 @@ cd /opt/schmittnet
 
 #### 2. Build the Docker image
 
-The production image must be built locally because the GitHub Actions CI/CD pipeline (which normally builds and pushes it) is only used for the VPS path.
-
 ```bash
-docker build -t ghcr.io/schmittnet/schmittnet:latest \
-  -f apps/web/Dockerfile .
+docker compose -f infra/docker-compose.yml build
 ```
-
-This tags the image to match the name the production compose file expects by default.
 
 #### 3. Create and configure the environment file
 
@@ -296,12 +291,12 @@ sudo systemctl enable --now schmittnet
 
 #### Updating (local network)
 
-Pull the latest code, rebuild the image, and restart the stack:
+Pull the latest code, rebuild, and restart the stack:
 
 ```bash
 cd /opt/schmittnet
 git pull
-docker build -t ghcr.io/schmittnet/schmittnet:latest -f apps/web/Dockerfile .
+docker compose -f infra/docker-compose.yml build
 docker compose -f infra/docker-compose.yml up -d
 docker compose -f infra/docker-compose.yml exec web npx prisma migrate deploy
 ```
@@ -392,7 +387,9 @@ In your GitHub repo → **Settings → Secrets and variables → Actions**, add:
 
 Also ensure the repository has write permissions for GitHub Container Registry: **Settings → Actions → General → Workflow permissions → Read and write permissions**.
 
-#### 6. Trigger the first build and deploy
+#### 6. Build and start the stack
+
+**Option A — GitHub Actions (recommended for ongoing deploys)**
 
 The deploy workflow runs automatically after CI passes on a push to `main`. Trigger it with an empty commit if the branch is already up to date:
 
@@ -408,6 +405,18 @@ GitHub Actions will:
 4. Hit `/api/health` to verify the deployment succeeded
 
 Monitor progress in the **Actions** tab of your repository.
+
+**Option B — Build on the VPS directly (no GitHub Actions required)**
+
+SSH into the VPS and run:
+
+```bash
+cd /opt/schmittnet
+docker compose -f infra/docker-compose.yml build
+docker compose -f infra/docker-compose.yml up -d
+```
+
+This is identical to the local network path and requires no CI setup. Use Option A once you want automated deploys on every push to `main`.
 
 #### 7. Bootstrap the database
 
@@ -430,4 +439,6 @@ Browse to `https://tickets.yourcompany.com` — Caddy provisions the TLS certifi
 
 #### Subsequent deploys
 
-Push to `main` — GitHub Actions handles everything automatically.
+**With GitHub Actions:** push to `main` — CI handles build, push, and restart automatically.
+
+**Without GitHub Actions:** SSH into the VPS and run the same commands as the [local network update flow](#updating-local-network).

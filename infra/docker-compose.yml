@@ -13,6 +13,9 @@ services:
     restart: unless-stopped
 
   web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
     image: ghcr.io/${GITHUB_REPOSITORY:-schmittnet/schmittnet}:${IMAGE_TAG:-latest}
     env_file:
       - ../.env
@@ -28,6 +31,9 @@ services:
     restart: unless-stopped
 
   worker:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
     image: ghcr.io/${GITHUB_REPOSITORY:-schmittnet/schmittnet}:${IMAGE_TAG:-latest}
     command: ["node", "dist/worker.js"]
     env_file:
