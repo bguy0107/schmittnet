@@ -171,6 +171,8 @@ git clone https://github.com/<your-org>/schmittnet.git /opt/schmittnet
 cd /opt/schmittnet
 ```
 
+> **All commands from this point on must be run from `/opt/schmittnet` (the project root).** The compose file paths are relative to that directory, so running them from any other location will fail.
+
 #### 2. Build the Docker image
 
 ```bash
@@ -340,7 +342,10 @@ Wait for DNS to propagate before bringing up Caddy — it must pass an ACME HTTP
 
 ```bash
 git clone https://github.com/<your-org>/schmittnet.git /opt/schmittnet
+cd /opt/schmittnet
 ```
+
+> **All commands from this point on must be run from `/opt/schmittnet` (the project root).** The compose file paths are relative to that directory, so running them from any other location will fail.
 
 #### 4. Create the environment file
 
@@ -425,12 +430,18 @@ This is identical to the local network path and requires no CI setup. Use Option
 After the first successful deploy, SSH into the VPS and run:
 
 ```bash
+cd /opt/schmittnet
+
+# Run database migrations
+docker compose -f infra/docker-compose.yml exec web \
+  npx prisma migrate deploy
+
 # Seed test accounts, owner groups, and sample locations
-docker compose -f /opt/schmittnet/infra/docker-compose.yml exec web \
+docker compose -f infra/docker-compose.yml exec web \
   node apps/web/prisma/seed.js
 
 # Create the MinIO storage bucket
-docker compose -f /opt/schmittnet/infra/docker-compose.yml exec minio \
+docker compose -f infra/docker-compose.yml exec minio \
   sh -c 'mc alias set local http://localhost:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" \
          && mc mb --ignore-existing local/tickets'
 ```
