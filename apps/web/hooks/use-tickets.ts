@@ -128,3 +128,55 @@ export function useSubmitTicket(token: string) {
       }),
   });
 }
+
+export function useTicketWatchStatus(ticketId: string) {
+  return useQuery({
+    queryKey: ["ticket-watch", ticketId],
+    queryFn: () =>
+      fetchApi<{ isWatching: boolean; webhookUrl: string | null }>(
+        `/api/tickets/${ticketId}/watch`,
+      ),
+    enabled: !!ticketId,
+  });
+}
+
+export function useWatchTicket(ticketId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (webhookUrl: string) =>
+      fetchApi(`/api/tickets/${ticketId}/watch`, {
+        method: "POST",
+        body: JSON.stringify({ webhookUrl }),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["ticket-watch", ticketId] }),
+  });
+}
+
+export function useUnwatchTicket(ticketId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      fetchApi(`/api/tickets/${ticketId}/watch`, { method: "DELETE" }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["ticket-watch", ticketId] }),
+  });
+}
+
+export function useDiscordSettings() {
+  return useQuery({
+    queryKey: ["discord-settings"],
+    queryFn: () =>
+      fetchApi<{ IT: string | null; MAINTENANCE: string | null }>("/api/settings/discord"),
+  });
+}
+
+export function useUpdateDiscordSetting() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { category: "IT" | "MAINTENANCE"; webhookUrl: string }) =>
+      fetchApi("/api/settings/discord", {
+        method: "PUT",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["discord-settings"] }),
+  });
+}

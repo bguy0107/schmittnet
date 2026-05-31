@@ -131,6 +131,7 @@ model User {
   notes              TicketNote[]
   approvalsRequested TicketApproval[] @relation("RequestedBy")
   approvalsActioned  TicketApproval[] @relation("ActionedBy")
+  watchedTickets     TicketWatcher[]
 
   @@map("users")
 }
@@ -171,6 +172,7 @@ model Ticket {
   media     TicketMedia[]
   notes     TicketNote[]
   approvals TicketApproval[]
+  watchers  TicketWatcher[]
 
   @@map("tickets")
 }
@@ -216,4 +218,25 @@ model TicketApproval {
   approver  User?  @relation("ActionedBy", fields: [approverId], references: [id])
 
   @@map("ticket_approvals")
+}
+
+model TicketWatcher {
+  id         String   @id @default(uuid())
+  ticketId   String   @map("ticket_id")
+  userId     String   @map("user_id")
+  webhookUrl String   @map("webhook_url")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([ticketId, userId])
+  @@map("ticket_watchers")
+}
+
+model Setting {
+  key   String @id
+  value String
+
+  @@map("settings")
 }

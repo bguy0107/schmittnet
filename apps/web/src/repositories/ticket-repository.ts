@@ -121,7 +121,7 @@ export const ticketRepository = {
     return prisma.ticket.update({
       where: { id },
       data: { status, ...extra, updatedAt: new Date() },
-      select: { id: true, status: true, locationId: true },
+      select: { id: true, status: true, locationId: true, category: true },
     });
   },
 

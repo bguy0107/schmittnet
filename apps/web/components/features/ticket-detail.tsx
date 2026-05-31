@@ -14,6 +14,9 @@ import {
   useAddNote,
   useClaimTicket,
   useResolveApproval,
+  useTicketWatchStatus,
+  useWatchTicket,
+  useUnwatchTicket,
 } from "@/hooks/use-tickets";
 import { formatDateTime, statusLabel, priorityLabel } from "@schmittnet/utils";
 import type { Role, TicketStatus } from "@schmittnet/types";
@@ -72,11 +75,17 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
   const claimTicket = useClaimTicket(ticketId);
   const resolveApproval = useResolveApproval(ticketId);
 
+  const { data: watchStatus } = useTicketWatchStatus(ticketId);
+  const watchTicket = useWatchTicket(ticketId);
+  const unwatchTicket = useUnwatchTicket(ticketId);
+
   const [noteContent, setNoteContent] = useState("");
   const [onHoldReason, setOnHoldReason] = useState("");
   const [showOnHoldForm, setShowOnHoldForm] = useState(false);
   const [approvalAction, setApprovalAction] = useState<"APPROVE" | "DECLINE" | null>(null);
   const [approvalNotes, setApprovalNotes] = useState("");
+  const [showWatchForm, setShowWatchForm] = useState(false);
+  const [watchWebhook, setWatchWebhook] = useState("");
 
   if (isLoading) {
     return <div className="py-16 text-center text-sm text-gray-500 dark:text-gray-400">Loading…</div>;
@@ -392,6 +401,67 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
           </CardContent>
         </Card>
       )}
+
+      {/* Watch */}
+      <Card>
+        <CardHeader className="pb-2 pt-4">
+          <CardTitle className="text-sm font-medium">Watch this ticket</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {watchStatus?.isWatching ? (
+            <div className="space-y-2">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                You are watching this ticket. Notifications go to your Discord webhook.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => unwatchTicket.mutate()}
+                disabled={unwatchTicket.isPending}
+              >
+                {unwatchTicket.isPending ? "Removing…" : "Unwatch"}
+              </Button>
+            </div>
+          ) : showWatchForm ? (
+            <div className="space-y-2">
+              <input
+                type="url"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring dark:bg-gray-900"
+                placeholder="https://discord.com/api/webhooks/…"
+                value={watchWebhook}
+                onChange={(e) => setWatchWebhook(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  disabled={!watchWebhook.trim() || watchTicket.isPending}
+                  onClick={() =>
+                    watchTicket.mutate(watchWebhook, {
+                      onSuccess: () => { setShowWatchForm(false); setWatchWebhook(""); },
+                    })
+                  }
+                >
+                  {watchTicket.isPending ? "Saving…" : "Confirm"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { setShowWatchForm(false); setWatchWebhook(""); }}
+                >
+                  Cancel
+                </Button>
+              </div>
+              {watchTicket.isError && (
+                <p className="text-xs text-destructive">Invalid webhook URL — please try again.</p>
+              )}
+            </div>
+          ) : (
+            <Button variant="outline" size="sm" onClick={() => setShowWatchForm(true)}>
+              Watch
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Notes */}
       <Card>

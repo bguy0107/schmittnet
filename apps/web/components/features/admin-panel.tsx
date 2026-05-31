@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, QrCode } from "lucide-react";
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { fetchApi } from "@/lib/api";
+import { useDiscordSettings, useUpdateDiscordSetting } from "@/hooks/use-tickets";
 
 // ─── Users tab ───────────────────────────────────────────────────────────────
 
@@ -837,9 +838,69 @@ function LocationsTab() {
   );
 }
 
+// ─── Discord settings tab ─────────────────────────────────────────────────────
+
+function DiscordSettingsTab() {
+  const { data: settings, isLoading } = useDiscordSettings();
+  const update = useUpdateDiscordSetting();
+  const [values, setValues] = useState({ IT: "", MAINTENANCE: "" });
+  const [saved, setSaved] = useState<"IT" | "MAINTENANCE" | null>(null);
+
+  useEffect(() => {
+    if (settings) {
+      setValues({ IT: settings.IT ?? "", MAINTENANCE: settings.MAINTENANCE ?? "" });
+    }
+  }, [settings]);
+
+  function handleSave(category: "IT" | "MAINTENANCE") {
+    update.mutate(
+      { category, webhookUrl: values[category] },
+      { onSuccess: () => { setSaved(category); setTimeout(() => setSaved(null), 2000); } },
+    );
+  }
+
+  if (isLoading) {
+    return <div className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">Loading…</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <p className="text-sm text-gray-500 dark:text-gray-400">
+        Discord channel webhooks that receive notifications when a ticket is opened or moves to
+        in progress. Leave blank to disable.
+      </p>
+
+      {(["IT", "MAINTENANCE"] as const).map((cat) => (
+        <div key={cat} className="space-y-2">
+          <Label htmlFor={`discord-${cat}`}>{cat === "IT" ? "IT" : "Maintenance"} webhook</Label>
+          <div className="flex gap-2">
+            <Input
+              id={`discord-${cat}`}
+              placeholder="https://discord.com/api/webhooks/…"
+              value={values[cat]}
+              onChange={(e) => setValues((v) => ({ ...v, [cat]: e.target.value }))}
+              className="flex-1"
+            />
+            <Button
+              size="sm"
+              disabled={update.isPending}
+              onClick={() => handleSave(cat)}
+            >
+              {saved === cat ? "Saved!" : "Save"}
+            </Button>
+          </div>
+          {update.isError && (
+            <p className="text-xs text-destructive">Failed to save — check the URL and try again.</p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ─── Admin panel (tabbed) ─────────────────────────────────────────────────────
 
-type Tab = "users" | "locations";
+type Tab = "users" | "locations" | "settings";
 
 export function AdminPanel() {
   const [tab, setTab] = useState<Tab>("users");
@@ -847,7 +908,7 @@ export function AdminPanel() {
   return (
     <div className="space-y-4">
       <div className="flex w-fit gap-1 rounded-lg border bg-white p-1 shadow-sm dark:bg-gray-900">
-        {(["users", "locations"] as Tab[]).map((t) => (
+        {(["users", "locations", "settings"] as Tab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -864,6 +925,7 @@ export function AdminPanel() {
 
       {tab === "users" && <UsersTab />}
       {tab === "locations" && <LocationsTab />}
+      {tab === "settings" && <DiscordSettingsTab />}
     </div>
   );
 }

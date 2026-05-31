@@ -4,7 +4,10 @@ import { prisma } from "@/src/lib/prisma";
 import { redis } from "@/src/lib/redis";
 import { env } from "@/src/lib/env";
 import { logger } from "@/src/lib/logger";
+import { settingRepository } from "@/src/repositories/setting-repository";
+import { watcherRepository } from "@/src/repositories/watcher-repository";
 import type { NotificationJobData } from "@/src/services/notification-service";
+import type { Category } from "@schmittnet/types";
 
 const QUEUE_NAME = "notifications";
 
@@ -70,6 +73,33 @@ async function notifyUsers(
   );
 }
 
+async function notifyDepartmentAndWatchers(
+  ticketId: string,
+  category: Category,
+  message: string,
+) {
+  const [departmentWebhook, watchers] = await Promise.all([
+    settingRepository.getDiscordWebhook(category),
+    watcherRepository.findByTicket(ticketId),
+  ]);
+
+  // Collect unique webhook URLs — department channel first, then watchers
+  const seen = new Set<string>();
+  const urls: string[] = [];
+  if (departmentWebhook) {
+    seen.add(departmentWebhook);
+    urls.push(departmentWebhook);
+  }
+  for (const w of watchers) {
+    if (!seen.has(w.webhookUrl)) {
+      seen.add(w.webhookUrl);
+      urls.push(w.webhookUrl);
+    }
+  }
+
+  await Promise.allSettled(urls.map((url) => sendDiscord(url, message)));
+}
+
 async function processJob(
   job: Job<NotificationJobData>,
   emailTransport: ReturnType<typeof makeEmailTransport>,
@@ -95,7 +125,25 @@ async function processJob(
     if (!ticket) return;
     const subject = `[SchmittNet] New ${data.category} Ticket — ${ticket.location.name}`;
     const body = `A new ticket (#${data.ticketId.slice(0, 8).toUpperCase()}) has been submitted at ${ticket.location.name}.`;
-    await notifyUsers(techs, subject, body, emailTransport);
+    await Promise.all([
+      notifyUsers(techs, subject, body, emailTransport),
+      notifyDepartmentAndWatchers(
+        data.ticketId,
+        data.category,
+        `**${subject}**\n${body}`,
+      ),
+    ]);
+  }
+
+  if (data.type === "TICKET_IN_PROGRESS") {
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: data.ticketId },
+      select: { id: true, location: { select: { name: true } } },
+    });
+    if (!ticket) return;
+    const subject = `[SchmittNet] ${data.category} Ticket In Progress — ${ticket.location.name}`;
+    const body = `Ticket #${data.ticketId.slice(0, 8).toUpperCase()} at ${ticket.location.name} is now in progress.`;
+    await notifyDepartmentAndWatchers(data.ticketId, data.category, `**${subject}**\n${body}`);
   }
 
   if (data.type === "AWAITING_APPROVAL" || data.type === "RESOLVED") {
