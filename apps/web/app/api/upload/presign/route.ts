@@ -3,8 +3,7 @@ import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomUUID } from "crypto";
 import { z } from "zod";
-import { s3, BUCKET, ALLOWED_MIME_TYPES, MAX_FILE_SIZE_BYTES } from "@/src/lib/minio";
-import { env } from "@/src/lib/env";
+import { s3, BUCKET, ALLOWED_MIME_TYPES, MAX_FILE_SIZE_BYTES, toPublicUrl } from "@/src/lib/minio";
 import { toApiError, ValidationError, RateLimitError } from "@/src/lib/errors";
 
 const presignSchema = z.object({
@@ -31,13 +30,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Short-lived URL — client must upload within 5 minutes.
-    const internalUrl = await getSignedUrl(s3, command, { expiresIn: 300 });
-
-    // The S3 client is configured with the internal Docker service name (minio:9000).
-    // Rewrite to the public-facing URL so browsers can PUT directly without routing
-    // through the Next.js process or hitting an unresolvable internal hostname.
-    const internalBase = `${env.MINIO_USE_SSL ? "https" : "http"}://${env.MINIO_ENDPOINT}:${env.MINIO_PORT}`;
-    const url = internalUrl.replace(internalBase, env.MINIO_PUBLIC_URL.replace(/\/$/, ""));
+    const url = toPublicUrl(await getSignedUrl(s3, command, { expiresIn: 300 }));
 
     return NextResponse.json({ url, key });
   } catch (error) {
