@@ -75,6 +75,21 @@ export function useClaimTicket(ticketId: string) {
   });
 }
 
+export function useResolveApproval(ticketId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { approvalId: string; status: "APPROVED" | "DECLINED"; notes?: string }) =>
+      fetchApi(`/api/tickets/${ticketId}/approval`, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["ticket", ticketId] });
+      void qc.invalidateQueries({ queryKey: ["tickets"] });
+    },
+  });
+}
+
 export function useSubmitTicket(token: string) {
   return useMutation({
     mutationFn: (body: {

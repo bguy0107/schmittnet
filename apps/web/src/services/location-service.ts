@@ -37,6 +37,15 @@ export const locationService = {
     return locationRepository.create({ ...data, qrToken });
   },
 
+  async getLocation(id: string, actorRole: Role) {
+    if (actorRole !== "SUPER_ADMIN") {
+      throw new ForbiddenError("Only super-admins may view location details");
+    }
+    const location = await locationRepository.findById(id);
+    if (!location) throw new NotFoundError("Location not found");
+    return location;
+  },
+
   async updateLocation(id: string, actorRole: Role, body: unknown) {
     if (actorRole !== "SUPER_ADMIN") {
       throw new ForbiddenError("Only super-admins may update locations");

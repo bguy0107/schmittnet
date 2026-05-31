@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { Plus, QrCode } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -284,6 +285,12 @@ function LocationsTab() {
                 <Badge variant={loc.qrActive ? "success" : "secondary"}>
                   {loc.qrActive ? "QR active" : "QR inactive"}
                 </Badge>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/admin/locations/${loc.id}/qr`}>
+                    <QrCode className="h-4 w-4" />
+                    Print QR
+                  </Link>
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
