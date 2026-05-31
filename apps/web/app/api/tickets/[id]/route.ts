@@ -18,7 +18,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     const ticket = await ticketService.getTicketById(id, session.user.role, session.user.ownerId);
 
     const media = await Promise.all(
-      ticket.media.map(async (m) => ({
+      ticket.media.map(async (m: { id: string; storageKey: string; mediaType: "PHOTO" | "VIDEO"; mimeType: string }) => ({
         ...m,
         signedUrl: await getSignedReadUrl(m.storageKey),
       })),
