@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, AlertCircle, Image as ImageIcon, FileVideo } from "lucide-react";
+import { ArrowLeft, AlertCircle, FileVideo } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,7 @@ interface TicketRow {
     createdAt: string;
     author: { id: string; name: string };
   }>;
-  media: Array<{ id: string; storageKey: string; mediaType: "PHOTO" | "VIDEO"; mimeType: string }>;
+  media: Array<{ id: string; storageKey: string; mediaType: "PHOTO" | "VIDEO"; mimeType: string; signedUrl: string }>;
   approvals: Array<{
     id: string;
     status: "PENDING" | "APPROVED" | "DECLINED";
@@ -212,21 +212,36 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
           <CardContent>
             <div className="flex flex-wrap gap-2">
               {t.media.map((m) => (
-                <div
+                <a
                   key={m.id}
-                  className="flex h-16 w-16 items-center justify-center rounded-md border bg-gray-50 text-gray-300 dark:bg-gray-800 dark:text-gray-600"
+                  href={m.signedUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group relative flex h-20 w-20 shrink-0 overflow-hidden rounded-md border bg-gray-50 dark:bg-gray-800"
                 >
                   {m.mediaType === "VIDEO" ? (
-                    <FileVideo className="h-6 w-6" />
+                    <>
+                      <video
+                        src={m.signedUrl}
+                        className="h-full w-full object-cover"
+                        muted
+                        preload="metadata"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40">
+                        <FileVideo className="h-6 w-6 text-white" />
+                      </div>
+                    </>
                   ) : (
-                    <ImageIcon className="h-6 w-6" />
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={m.signedUrl}
+                      alt="Ticket attachment"
+                      className="h-full w-full object-cover group-hover:opacity-90"
+                    />
                   )}
-                </div>
+                </a>
               ))}
             </div>
-            <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">
-              Media preview requires signed read URLs — not yet wired up.
-            </p>
           </CardContent>
         </Card>
       )}

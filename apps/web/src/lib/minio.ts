@@ -1,4 +1,5 @@
-import { S3Client } from "@aws-sdk/client-s3";
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "./env";
 
 const protocol = env.MINIO_USE_SSL ? "https" : "http";
@@ -27,3 +28,8 @@ export const ALLOWED_MIME_TYPES = new Set([
 ]);
 
 export const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB — revisit based on storage budget
+
+export function getSignedReadUrl(key: string): Promise<string> {
+  const command = new GetObjectCommand({ Bucket: BUCKET, Key: key });
+  return getSignedUrl(s3, command, { expiresIn: 3600 });
+}

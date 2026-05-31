@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { ticketService } from "@/src/services/ticket-service";
+import { getSignedReadUrl } from "@/src/lib/minio";
 import { toApiError, AppError, UnauthorizedError } from "@/src/lib/errors";
 import { logger } from "@/src/lib/logger";
 
@@ -15,7 +16,15 @@ export async function GET(_req: NextRequest, { params }: Params) {
   const { id } = await params;
   try {
     const ticket = await ticketService.getTicketById(id, session.user.role, session.user.ownerId);
-    return NextResponse.json(ticket);
+
+    const media = await Promise.all(
+      ticket.media.map(async (m) => ({
+        ...m,
+        signedUrl: await getSignedReadUrl(m.storageKey),
+      })),
+    );
+
+    return NextResponse.json({ ...ticket, media });
   } catch (error) {
     if (error instanceof AppError) {
       return NextResponse.json(toApiError(error), { status: error.statusCode });
