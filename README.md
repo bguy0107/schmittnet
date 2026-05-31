@@ -230,8 +230,10 @@ The default `infra/Caddyfile` is configured for HTTPS with a public domain. For 
 #### 5. Start the stack
 
 ```bash
-docker compose -f infra/docker-compose.yml up -d
+docker compose -f infra/docker-compose.yml --env-file .env up -d
 ```
+
+> **Why `--env-file .env`?** Docker Compose resolves `${VAR}` placeholders in the compose file from the directory containing the compose file (`infra/`), not the repo root. Passing `--env-file .env` explicitly points it at the correct file.
 
 Confirm all services are healthy before continuing:
 
@@ -277,8 +279,8 @@ Requires=docker.service
 
 [Service]
 WorkingDirectory=/opt/schmittnet
-ExecStart=docker compose -f infra/docker-compose.yml up
-ExecStop=docker compose -f infra/docker-compose.yml down
+ExecStart=docker compose -f infra/docker-compose.yml --env-file .env up
+ExecStop=docker compose -f infra/docker-compose.yml --env-file .env down
 Restart=on-failure
 
 [Install]
@@ -296,8 +298,8 @@ Pull the latest code, rebuild, and restart the stack:
 ```bash
 cd /opt/schmittnet
 git pull
-docker compose -f infra/docker-compose.yml build
-docker compose -f infra/docker-compose.yml up -d
+docker compose -f infra/docker-compose.yml --env-file .env build
+docker compose -f infra/docker-compose.yml --env-file .env up -d
 docker compose -f infra/docker-compose.yml exec web npx prisma migrate deploy
 ```
 
@@ -412,8 +414,8 @@ SSH into the VPS and run:
 
 ```bash
 cd /opt/schmittnet
-docker compose -f infra/docker-compose.yml build
-docker compose -f infra/docker-compose.yml up -d
+docker compose -f infra/docker-compose.yml --env-file .env build
+docker compose -f infra/docker-compose.yml --env-file .env up -d
 ```
 
 This is identical to the local network path and requires no CI setup. Use Option A once you want automated deploys on every push to `main`.
@@ -441,4 +443,4 @@ Browse to `https://tickets.yourcompany.com` — Caddy provisions the TLS certifi
 
 **With GitHub Actions:** push to `main` — CI handles build, push, and restart automatically.
 
-**Without GitHub Actions:** SSH into the VPS and run the same commands as the [local network update flow](#updating-local-network).
+**Without GitHub Actions:** SSH into the VPS and run the same commands as the [local network update flow](#updating-local-network) (remember `--env-file .env`).
