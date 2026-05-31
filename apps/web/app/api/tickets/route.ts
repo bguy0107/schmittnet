@@ -4,6 +4,30 @@ import { ticketService } from "@/src/services/ticket-service";
 import { toApiError, AppError, UnauthorizedError } from "@/src/lib/errors";
 import { logger } from "@/src/lib/logger";
 
+export async function POST(req: NextRequest) {
+  const session = await auth();
+  if (!session?.user) {
+    return NextResponse.json(toApiError(new UnauthorizedError()), { status: 401 });
+  }
+
+  const body: unknown = await req.json();
+  try {
+    const ticket = await ticketService.createTicket(
+      session.user.id,
+      session.user.role,
+      session.user.ownerId,
+      body,
+    );
+    return NextResponse.json(ticket, { status: 201 });
+  } catch (error) {
+    if (error instanceof AppError) {
+      return NextResponse.json(toApiError(error), { status: error.statusCode });
+    }
+    logger.error("POST /api/tickets unexpected error", { error: String(error) });
+    return NextResponse.json(toApiError(error), { status: 500 });
+  }
+}
+
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user) {

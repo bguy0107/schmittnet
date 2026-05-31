@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { AlertCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { AlertCircle, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useTickets } from "@/hooks/use-tickets";
 import { fetchApi } from "@/lib/api";
+import { OpenTicketPanel } from "./open-ticket-panel";
 import { formatDateTime } from "@schmittnet/utils";
 import type { Role, TicketStatus, Category } from "@schmittnet/types";
 
@@ -56,6 +57,7 @@ export function TicketList({ role }: TicketListProps) {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [showOpenPanel, setShowOpenPanel] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => { setSearch(searchInput); setPage(1); }, 300);
@@ -80,8 +82,9 @@ export function TicketList({ role }: TicketListProps) {
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2">
+      {/* Filter bar + action */}
+      <div className="flex items-start gap-2">
+        <div className="flex flex-1 flex-wrap gap-2">
         <select
           value={status}
           onChange={(e) => { setStatus(e.target.value); setPage(1); }}
@@ -117,6 +120,11 @@ export function TicketList({ role }: TicketListProps) {
           className="rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           aria-label="Search tickets"
         />
+        </div>
+        <Button size="sm" className="shrink-0" onClick={() => setShowOpenPanel(true)}>
+          <Plus className="h-4 w-4" />
+          Open Ticket
+        </Button>
       </div>
 
       {/* List */}
@@ -200,6 +208,13 @@ export function TicketList({ role }: TicketListProps) {
             </Button>
           </div>
         </div>
+      )}
+
+      {showOpenPanel && (
+        <OpenTicketPanel
+          locations={locations ?? []}
+          onClose={() => setShowOpenPanel(false)}
+        />
       )}
     </div>
   );

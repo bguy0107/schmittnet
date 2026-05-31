@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
     ]);
 
     const countByStatus = Object.fromEntries(
-      statusCounts.map((s) => [s.status, s._count._all]),
+      statusCounts.map((s: { status: string; _count: { _all: number } }) => [s.status, s._count._all]),
     );
 
     const avgResolutionMs =

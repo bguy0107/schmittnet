@@ -94,6 +94,25 @@ export function useResolveApproval(ticketId: string) {
   });
 }
 
+export function useOpenTicket() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      locationId: string;
+      category: string;
+      urgency: string;
+      description: string;
+      deadline?: string;
+      mediaKeys?: string[];
+    }) =>
+      fetchApi<{ id: string; referenceCode: string }>("/api/tickets", {
+        method: "POST",
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["tickets"] }),
+  });
+}
+
 export function useSubmitTicket(token: string) {
   return useMutation({
     mutationFn: (body: {

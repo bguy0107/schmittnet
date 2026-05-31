@@ -21,6 +21,15 @@ export const submitTicketSchema = z.object({
   mediaKeys: z.array(z.string().min(1)).min(1).max(5),
 });
 
+export const createTicketSchema = z.object({
+  locationId: z.string().uuid(),
+  category: z.enum(["IT", "MAINTENANCE"]),
+  urgency: z.enum(["NORMAL", "SERVICE_IMPACTING"]),
+  description: z.string().min(10).max(2000),
+  deadline: z.string().optional(),
+  mediaKeys: z.array(z.string().min(1)).max(5).optional(),
+});
+
 export const statusTransitionSchema = z.object({
   status: z.enum(["IN_PROGRESS", "ON_HOLD", "AWAITING_APPROVAL", "RESOLVED", "CANCELLED"]),
   onHoldReason: z.string().max(500).optional(),
@@ -65,6 +74,56 @@ export const ticketService = {
       id: ticket.id,
       referenceCode: ticket.id.slice(0, 8).toUpperCase(),
     };
+  },
+
+  async createTicket(actorId: string, actorRole: Role, actorOwnerId: string | null, body: unknown) {
+    const data = createTicketSchema.parse(body);
+
+    // Enforce location scope — same logic as listTickets
+    let allowedLocationIds: string[] | undefined;
+    if (actorRole === "OWNER" || actorRole === "OWNER_STAFF") {
+      if (!actorOwnerId) throw new ForbiddenError("No owner context");
+      allowedLocationIds = await locationRepository.getLocationIdsByOwner(actorOwnerId);
+    } else if (actorRole === "TECHNICIAN") {
+      const user = await userRepository.findById(actorId);
+      if (user?.ownerId) {
+        allowedLocationIds = await locationRepository.getLocationIdsByOwner(user.ownerId);
+      }
+    }
+
+    if (allowedLocationIds && !allowedLocationIds.includes(data.locationId)) {
+      throw new ForbiddenError("Location is not within your scope");
+    }
+
+    const location = await locationRepository.findById(data.locationId);
+    if (!location) throw new NotFoundError("Location not found");
+
+    const priority = data.urgency === "SERVICE_IMPACTING" ? "P0" : "NORMAL";
+
+    const ticket = await ticketRepository.create({
+      locationId: data.locationId,
+      category: data.category,
+      description: data.description,
+      priority,
+      deadline: data.deadline ? new Date(data.deadline) : undefined,
+      mediaKeys: (data.mediaKeys ?? []).map((key) => ({
+        storageKey: key,
+        mediaType: "PHOTO" as const,
+        mimeType: "image/jpeg",
+      })),
+    });
+
+    logger.info("Ticket created by staff", {
+      ticket_id: ticket.id,
+      location_id: data.locationId,
+      actor_id: actorId,
+      category: data.category,
+      priority,
+    });
+
+    await notificationService.enqueueTicketOpened(ticket.id, data.locationId, data.category);
+
+    return { id: ticket.id, referenceCode: ticket.id.slice(0, 8).toUpperCase() };
   },
 
   async listTickets(actorId: string, actorRole: Role, actorOwnerId: string | null, filter: {
