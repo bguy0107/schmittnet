@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+const emptyToUndefined = (v: unknown) => (v === "" ? undefined : v);
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 
@@ -19,11 +21,16 @@ const envSchema = z.object({
 
   AUTH_SECRET: z.string().min(32),
 
-  GMAIL_USER: z.string().email().optional(),
-  GMAIL_APP_PASSWORD: z.string().optional(),
+  GMAIL_USER: z.preprocess(emptyToUndefined, z.string().email().optional()),
+  GMAIL_APP_PASSWORD: z.preprocess(emptyToUndefined, z.string().optional()),
 
-  SENTRY_DSN: z.string().url().optional(),
+  SENTRY_DSN: z.preprocess(emptyToUndefined, z.string().url().optional()),
 });
 
-// Fail fast at startup if required env vars are missing or invalid.
-export const env = envSchema.parse(process.env);
+// During Next.js static generation (next build), server modules are evaluated
+// without real env vars. Defer validation to runtime so the build can complete.
+// At runtime, the app fails fast on startup if anything is missing or invalid.
+export const env =
+  process.env.NEXT_PHASE === "phase-production-build"
+    ? (process.env as unknown as z.infer<typeof envSchema>)
+    : envSchema.parse(process.env);

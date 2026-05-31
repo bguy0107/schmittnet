@@ -1,0 +1,12 @@
+# Never bake env files into image layers — secrets are injected at runtime
+# via docker-compose env_file. Build-time env validation is skipped via
+# NEXT_PHASE check in src/lib/env.ts.
+.env
+.env.*
+
+**/node_modules
+**/.next
+**/.turbo
+**/dist
+**/.git
+**/*.log
