@@ -39,9 +39,15 @@ COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder /app/apps/web/public ./apps/web/public
 COPY --from=builder /app/apps/web/prisma ./apps/web/prisma
 # Prisma CLI + engines — needed for migrate deploy and seed
-COPY --from=deps /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
 COPY --from=deps /app/node_modules/prisma ./node_modules/prisma/
 COPY --from=deps /app/node_modules/@prisma ./node_modules/@prisma/
+# Shell wrapper so __dirname resolves to node_modules/prisma/build/ where the WASM lives.
+# Copying .bin/prisma as a real file (Docker follows symlinks) would set __dirname to .bin/
+# and break the WASM lookup at node_modules/prisma/build/prisma_schema_build_bg.wasm.
+RUN mkdir -p ./node_modules/.bin && \
+    printf '#!/bin/sh\nexec node /app/node_modules/prisma/build/index.js "$@"\n' \
+      > ./node_modules/.bin/prisma && \
+    chmod +x ./node_modules/.bin/prisma
 
 USER nextjs
 
