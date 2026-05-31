@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
 
     const avgResolutionMs =
       resolvedTickets.length > 0
-        ? resolvedTickets.reduce((sum: number, t) => {
+        ? resolvedTickets.reduce((sum: number, t: { createdAt: Date; resolvedAt: Date | null }) => {
             return sum + (t.resolvedAt!.getTime() - t.createdAt.getTime());
           }, 0) / resolvedTickets.length
         : null;
@@ -92,7 +92,7 @@ export async function GET(req: NextRequest) {
       where: locationIds ? { id: { in: locationIds } } : undefined,
       select: { id: true, name: true },
     });
-    const nameMap = Object.fromEntries(locationNames.map((l) => [l.id, l.name]));
+    const nameMap = Object.fromEntries(locationNames.map((l: { id: string; name: string }) => [l.id, l.name]));
 
     return NextResponse.json({
       open: countByStatus["OPEN"] ?? 0,
@@ -100,7 +100,7 @@ export async function GET(req: NextRequest) {
       awaitingApproval: countByStatus["AWAITING_APPROVAL"] ?? 0,
       resolved: countByStatus["RESOLVED"] ?? 0,
       avgResolutionHours: avgResolutionMs ? avgResolutionMs / 1000 / 60 / 60 : null,
-      ticketsByLocation: byLocation.map((r) => ({
+      ticketsByLocation: byLocation.map((r: { locationId: string; _count: { _all: number } }) => ({
         locationName: nameMap[r.locationId] ?? r.locationId,
         count: r._count._all,
       })),
