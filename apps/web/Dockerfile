@@ -18,6 +18,7 @@ COPY . .
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+RUN npx prisma generate --schema=apps/web/prisma/schema.prisma
 RUN npm run build --workspace=apps/web
 
 # Production image
