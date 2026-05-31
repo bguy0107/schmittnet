@@ -248,8 +248,8 @@ docker compose -f infra/docker-compose.yml ps
 #### 6. Create the MinIO storage bucket
 
 ```bash
-docker compose -f infra/docker-compose.yml exec minio \
-  mc mb --ignore-existing local/tickets
+docker compose -f infra/docker-compose.yml exec minio sh -c \
+  'mc alias set local http://localhost:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" && mc mb --ignore-existing local/tickets'
 ```
 
 #### 7. Run database migrations
@@ -444,8 +444,8 @@ docker compose -f infra/docker-compose.yml exec web \
   node apps/web/prisma/seed.js
 
 # Create the MinIO storage bucket
-docker compose -f infra/docker-compose.yml exec minio \
-  mc mb --ignore-existing local/tickets
+docker compose -f infra/docker-compose.yml exec minio sh -c \
+  'mc alias set local http://localhost:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" && mc mb --ignore-existing local/tickets'
 ```
 
 #### 8. Verify
