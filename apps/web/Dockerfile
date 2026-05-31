@@ -47,7 +47,8 @@ COPY --from=deps /app/node_modules/@prisma ./node_modules/@prisma/
 RUN mkdir -p ./node_modules/.bin && \
     printf '#!/bin/sh\nexec node /app/node_modules/prisma/build/index.js "$@"\n' \
       > ./node_modules/.bin/prisma && \
-    chmod +x ./node_modules/.bin/prisma
+    chmod +x ./node_modules/.bin/prisma && \
+    chown -R nextjs:nodejs ./node_modules/prisma ./node_modules/@prisma
 
 USER nextjs
 
