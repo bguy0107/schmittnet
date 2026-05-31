@@ -255,7 +255,7 @@ docker compose -f infra/docker-compose.yml exec minio \
 
 ```bash
 docker compose -f infra/docker-compose.yml exec web \
-  npx prisma migrate deploy
+  npx prisma migrate deploy --schema=apps/web/prisma/schema.prisma
 ```
 
 #### 8. Seed the initial accounts and locations
@@ -302,7 +302,7 @@ cd /opt/schmittnet
 git pull
 docker compose -f infra/docker-compose.yml --env-file .env build
 docker compose -f infra/docker-compose.yml --env-file .env up -d
-docker compose -f infra/docker-compose.yml exec web npx prisma migrate deploy
+docker compose -f infra/docker-compose.yml exec web npx prisma migrate deploy --schema=apps/web/prisma/schema.prisma
 ```
 
 ---
@@ -434,7 +434,7 @@ cd /opt/schmittnet
 
 # Run database migrations
 docker compose -f infra/docker-compose.yml exec web \
-  npx prisma migrate deploy
+  npx prisma migrate deploy --schema=apps/web/prisma/schema.prisma
 
 # Seed test accounts, owner groups, and sample locations
 docker compose -f infra/docker-compose.yml exec web \
