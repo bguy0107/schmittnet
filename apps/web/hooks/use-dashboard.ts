@@ -2,10 +2,15 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchApi } from "@/lib/api";
 import type { DashboardStats, LocationContext } from "@schmittnet/types";
 
-export function useDashboard() {
+export function useDashboard(from?: string, to?: string) {
+  const params = new URLSearchParams();
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  const qs = params.size > 0 ? `?${params.toString()}` : "";
+
   return useQuery({
-    queryKey: ["dashboard"],
-    queryFn: () => fetchApi<DashboardStats>("/api/reporting/dashboard"),
+    queryKey: ["dashboard", from, to],
+    queryFn: () => fetchApi<DashboardStats>(`/api/reporting/dashboard${qs}`),
   });
 }
 

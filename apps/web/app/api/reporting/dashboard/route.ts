@@ -1,11 +1,17 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/src/lib/prisma";
 import { locationRepository } from "@/src/repositories/location-repository";
-import { toApiError, AppError, UnauthorizedError, ForbiddenError } from "@/src/lib/errors";
+import { toApiError, AppError, UnauthorizedError, ForbiddenError, ValidationError } from "@/src/lib/errors";
 import { logger } from "@/src/lib/logger";
 
-export async function GET() {
+const dateRangeSchema = z.object({
+  from: z.string().date().optional(),
+  to: z.string().date().optional(),
+});
+
+export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json(toApiError(new UnauthorizedError()), { status: 401 });
@@ -18,6 +24,27 @@ export async function GET() {
     });
   }
 
+  const parsed = dateRangeSchema.safeParse({
+    from: req.nextUrl.searchParams.get("from") ?? undefined,
+    to: req.nextUrl.searchParams.get("to") ?? undefined,
+  });
+  if (!parsed.success) {
+    return NextResponse.json(
+      toApiError(new ValidationError("Invalid date format. Use YYYY-MM-DD.", parsed.error.flatten())),
+      { status: 400 },
+    );
+  }
+
+  const dateFilter =
+    parsed.data.from || parsed.data.to
+      ? {
+          createdAt: {
+            ...(parsed.data.from ? { gte: new Date(parsed.data.from) } : {}),
+            ...(parsed.data.to ? { lte: new Date(`${parsed.data.to}T23:59:59.999Z`) } : {}),
+          },
+        }
+      : {};
+
   try {
     const locationIds =
       role === "SUPER_ADMIN"
@@ -26,7 +53,10 @@ export async function GET() {
           ? await locationRepository.getLocationIdsByOwner(ownerId)
           : [];
 
-    const where = locationIds ? { locationId: { in: locationIds } } : {};
+    const where = {
+      ...(locationIds ? { locationId: { in: locationIds } } : {}),
+      ...dateFilter,
+    };
 
     const [statusCounts, resolvedTickets, byLocation] = await Promise.all([
       prisma.ticket.groupBy({

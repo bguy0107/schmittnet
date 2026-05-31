@@ -1,8 +1,31 @@
 "use client";
 
+import { useState } from "react";
 import { AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useDashboard } from "@/hooks/use-dashboard";
+
+type Preset = "all" | "7d" | "30d" | "90d";
+
+function getDateRange(preset: Preset): { from?: string; to?: string } {
+  if (preset === "all") return {};
+  const to = new Date();
+  const from = new Date();
+  const days = preset === "7d" ? 7 : preset === "30d" ? 30 : 90;
+  from.setDate(to.getDate() - days);
+  return {
+    from: from.toISOString().slice(0, 10),
+    to: to.toISOString().slice(0, 10),
+  };
+}
+
+const PRESETS: { label: string; value: Preset }[] = [
+  { label: "All time", value: "all" },
+  { label: "Last 7 days", value: "7d" },
+  { label: "Last 30 days", value: "30d" },
+  { label: "Last 90 days", value: "90d" },
+];
 
 interface StatCardProps {
   label: string;
@@ -25,7 +48,9 @@ function StatCard({ label, value, accent }: StatCardProps) {
 
 export function OwnerDashboard({ ownerId }: { ownerId: string | null }) {
   void ownerId;
-  const { data, isLoading, isError } = useDashboard();
+  const [preset, setPreset] = useState<Preset>("30d");
+  const { from, to } = getDateRange(preset);
+  const { data, isLoading, isError } = useDashboard(from, to);
 
   if (isLoading) {
     return <div className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">Loading dashboard…</div>;
@@ -45,6 +70,20 @@ export function OwnerDashboard({ ownerId }: { ownerId: string | null }) {
 
   return (
     <div className="space-y-6">
+      {/* Date range filter */}
+      <div className="flex flex-wrap gap-2">
+        {PRESETS.map(({ label, value }) => (
+          <Button
+            key={value}
+            variant={preset === value ? "default" : "outline"}
+            size="sm"
+            onClick={() => setPreset(value)}
+          >
+            {label}
+          </Button>
+        ))}
+      </div>
+
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Open" value={data.open} accent="text-blue-600" />
