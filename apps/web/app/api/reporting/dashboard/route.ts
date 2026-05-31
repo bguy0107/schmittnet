@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
 
     const avgResolutionMs =
       resolvedTickets.length > 0
-        ? resolvedTickets.reduce((sum, t) => {
+        ? resolvedTickets.reduce((sum: number, t) => {
             return sum + (t.resolvedAt!.getTime() - t.createdAt.getTime());
           }, 0) / resolvedTickets.length
         : null;
