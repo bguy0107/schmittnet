@@ -259,7 +259,7 @@ docker compose -f infra/docker-compose.yml exec web \
 #### 8. Seed the initial accounts and locations
 
 ```bash
-docker compose -f infra/docker-compose.yml exec web npm run db:seed
+docker compose -f infra/docker-compose.yml exec web node apps/web/prisma/seed.js
 ```
 
 This creates the test accounts from the [Seeded test accounts](#seeded-test-accounts) table above, two owner groups, and six sample locations. Log in as `admin@schmittnet.local` / `Admin1234!` to create real users and locations via the admin panel, then deactivate or change the passwords for all seeded test accounts before going live.
@@ -427,7 +427,7 @@ After the first successful deploy, SSH into the VPS and run:
 ```bash
 # Seed test accounts, owner groups, and sample locations
 docker compose -f /opt/schmittnet/infra/docker-compose.yml exec web \
-  npm run db:seed
+  node apps/web/prisma/seed.js
 
 # Create the MinIO storage bucket
 docker compose -f /opt/schmittnet/infra/docker-compose.yml exec minio \

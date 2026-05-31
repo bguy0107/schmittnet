@@ -21,6 +21,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN npx prisma generate --schema=apps/web/prisma/schema.prisma
 RUN npm run build --workspace=apps/web
+RUN npx esbuild apps/web/prisma/seed.ts --platform=node --target=node22 --outfile=apps/web/prisma/seed.js
 
 # Production image
 FROM base AS runner
@@ -37,6 +38,9 @@ COPY --from=builder /app/apps/web/.next/standalone ./
 COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder /app/apps/web/public ./apps/web/public
 COPY --from=builder /app/apps/web/prisma ./apps/web/prisma
+# Prisma CLI — needed for migrate deploy and seed
+COPY --from=deps /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
+COPY --from=deps /app/node_modules/prisma ./node_modules/prisma/
 
 USER nextjs
 
