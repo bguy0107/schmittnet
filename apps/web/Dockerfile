@@ -38,9 +38,10 @@ COPY --from=builder /app/apps/web/.next/standalone ./
 COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder /app/apps/web/public ./apps/web/public
 COPY --from=builder /app/apps/web/prisma ./apps/web/prisma
-# Prisma CLI — needed for migrate deploy and seed
+# Prisma CLI + engines — needed for migrate deploy and seed
 COPY --from=deps /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
 COPY --from=deps /app/node_modules/prisma ./node_modules/prisma/
+COPY --from=deps /app/node_modules/@prisma ./node_modules/@prisma/
 
 USER nextjs
 
