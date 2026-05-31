@@ -17,7 +17,6 @@ export default async function TicketDetailPage({
       <TicketDetail
         ticketId={id}
         userId={session.user.id}
-        // @ts-expect-error — extended session field
         role={session.user.role}
       />
     </div>

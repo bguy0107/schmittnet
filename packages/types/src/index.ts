@@ -29,7 +29,7 @@ export interface ApiError {
 }
 
 export interface PaginatedResponse<T> {
-  data: T[];
+  rows: T[];
   total: number;
   page: number;
   pageSize: number;
@@ -39,13 +39,12 @@ export interface PaginatedResponse<T> {
 
 export interface TicketSummary {
   id: string;
-  referenceCode: string;
   category: Category;
   status: TicketStatus;
   priority: Priority;
   description: string;
-  locationName: string;
-  assigneeName: string | null;
+  location: { id: string; name: string };
+  assignee: { id: string; name: string } | null;
   createdAt: string;
   updatedAt: string;
 }

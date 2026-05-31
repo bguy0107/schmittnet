@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, QrCode } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,7 @@ interface UserRow {
   role: string;
   isActive: boolean;
   categories: string[];
+  ownerId: string | null;
 }
 
 const createUserSchema = z.object({
@@ -30,6 +31,7 @@ const createUserSchema = z.object({
   email: z.string().email(),
   role: z.enum(["SUPER_ADMIN", "OWNER", "OWNER_STAFF", "TECHNICIAN"]),
   password: z.string().min(12, "Password must be at least 12 characters"),
+  ownerId: z.string().optional(),
 });
 type CreateUserData = z.infer<typeof createUserSchema>;
 
@@ -37,32 +39,56 @@ function UsersTab() {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
   const { data: users, isLoading } = useQuery({
     queryKey: ["admin-users"],
     queryFn: () => fetchApi<UserRow[]>("/api/users"),
   });
 
+  const owners = users?.filter((u) => u.role === "OWNER" && u.isActive) ?? [];
+
   const createUser = useMutation({
-    mutationFn: (body: CreateUserData) =>
+    mutationFn: (body: CreateUserData & { categories?: string[] }) =>
       fetchApi("/api/users", { method: "POST", body: JSON.stringify(body) }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["admin-users"] });
       setShowForm(false);
       setFormError(null);
+      setSelectedCategories([]);
     },
     onError: (err) => setFormError(err instanceof Error ? err.message : "Failed to create user"),
   });
 
-  const deactivateUser = useMutation({
-    mutationFn: (id: string) =>
-      fetchApi(`/api/users/${id}`, { method: "PATCH", body: JSON.stringify({ isActive: false }) }),
+  const toggleActive = useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
+      fetchApi(`/api/users/${id}`, { method: "PATCH", body: JSON.stringify({ isActive }) }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["admin-users"] }),
   });
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<CreateUserData>({
+  const { register, handleSubmit, reset, control, formState: { errors } } = useForm<CreateUserData>({
     resolver: zodResolver(createUserSchema),
+    defaultValues: { role: "TECHNICIAN" },
   });
+
+  const watchedRole = useWatch({ control, name: "role" });
+  const showCategories = watchedRole === "TECHNICIAN";
+  const showOwnerScope = watchedRole === "TECHNICIAN" || watchedRole === "OWNER_STAFF";
+
+  function handleCategoryToggle(cat: string) {
+    setSelectedCategories((prev) =>
+      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat],
+    );
+  }
+
+  function onSubmit(data: CreateUserData) {
+    const payload = {
+      ...data,
+      ownerId: data.ownerId || undefined,
+      categories: showCategories && selectedCategories.length > 0 ? selectedCategories : undefined,
+    };
+    createUser.mutate(payload);
+  }
 
   return (
     <div className="space-y-4">
@@ -70,7 +96,15 @@ function UsersTab() {
         <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400">
           {users ? `${users.length} users` : "Users"}
         </h2>
-        <Button size="sm" onClick={() => { setShowForm((s) => !s); reset(); setFormError(null); }}>
+        <Button
+          size="sm"
+          onClick={() => {
+            setShowForm((s) => !s);
+            reset({ role: "TECHNICIAN" });
+            setFormError(null);
+            setSelectedCategories([]);
+          }}
+        >
           <Plus className="h-4 w-4" />
           Add user
         </Button>
@@ -78,10 +112,15 @@ function UsersTab() {
 
       {showForm && (
         <form
-          onSubmit={handleSubmit((d) => createUser.mutate(d))}
+          onSubmit={handleSubmit(onSubmit)}
           className="space-y-3 rounded-lg border bg-gray-50 p-4 dark:bg-gray-800"
         >
-          {formError && <Alert variant="destructive"><AlertDescription>{formError}</AlertDescription></Alert>}
+          {formError && (
+            <Alert variant="destructive">
+              <AlertDescription>{formError}</AlertDescription>
+            </Alert>
+          )}
+
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <Label htmlFor="u-name">Name</Label>
@@ -111,19 +150,78 @@ function UsersTab() {
               <Input id="u-password" type="password" placeholder="Min 12 chars" {...register("password")} />
               {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
             </div>
+
+            {showCategories && (
+              <div className="space-y-2 sm:col-span-2">
+                <Label>Ticket categories</Label>
+                <div className="flex gap-4">
+                  {(["IT", "MAINTENANCE"] as const).map((cat) => (
+                    <label key={cat} className="flex cursor-pointer items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-gray-300 accent-primary"
+                        checked={selectedCategories.includes(cat)}
+                        onChange={() => handleCategoryToggle(cat)}
+                      />
+                      {cat === "IT" ? "IT" : "Maintenance"}
+                    </label>
+                  ))}
+                </div>
+                {showCategories && selectedCategories.length === 0 && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    Select at least one category so the technician receives ticket notifications.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {showOwnerScope && (
+              <div className="space-y-1 sm:col-span-2">
+                <Label htmlFor="u-owner">
+                  Owner scope{" "}
+                  <span className="text-gray-400 dark:text-gray-500">(optional — leave blank for all locations)</span>
+                </Label>
+                <select
+                  id="u-owner"
+                  className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  {...register("ownerId")}
+                >
+                  <option value="">— All owners —</option>
+                  {owners.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.name ?? o.email}
+                    </option>
+                  ))}
+                </select>
+                {owners.length === 0 && (
+                  <p className="text-xs text-gray-400 dark:text-gray-500">No active owners found.</p>
+                )}
+              </div>
+            )}
           </div>
+
           <div className="flex gap-2">
             <Button type="submit" size="sm" disabled={createUser.isPending}>
               {createUser.isPending ? "Creating…" : "Create"}
             </Button>
-            <Button type="button" size="sm" variant="outline" onClick={() => setShowForm(false)}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setShowForm(false);
+                setSelectedCategories([]);
+              }}
+            >
               Cancel
             </Button>
           </div>
         </form>
       )}
 
-      {isLoading && <div className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">Loading…</div>}
+      {isLoading && (
+        <div className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">Loading…</div>
+      )}
 
       {users && (
         <div className="overflow-hidden rounded-lg border bg-white dark:bg-gray-900">
@@ -133,6 +231,7 @@ function UsersTab() {
                 <th className="px-4 py-3 text-left">Name</th>
                 <th className="px-4 py-3 text-left">Email</th>
                 <th className="px-4 py-3 text-left">Role</th>
+                <th className="px-4 py-3 text-left">Categories</th>
                 <th className="px-4 py-3 text-left">Status</th>
                 <th className="px-4 py-3" />
               </tr>
@@ -145,22 +244,36 @@ function UsersTab() {
                   <td className="px-4 py-3">
                     <Badge variant="outline">{u.role.replace(/_/g, " ")}</Badge>
                   </td>
+                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
+                    {u.categories.length > 0 ? u.categories.join(", ") : <span className="text-gray-300 dark:text-gray-600">—</span>}
+                  </td>
                   <td className="px-4 py-3">
                     <Badge variant={u.isActive ? "success" : "secondary"}>
                       {u.isActive ? "Active" : "Disabled"}
                     </Badge>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {u.isActive && (
+                    {u.isActive ? (
                       <Button
                         variant="ghost"
                         size="sm"
                         className="text-destructive hover:text-destructive"
                         onClick={() => {
-                          if (confirm(`Deactivate ${u.name}?`)) deactivateUser.mutate(u.id);
+                          if (confirm(`Deactivate ${u.name}?`)) {
+                            toggleActive.mutate({ id: u.id, isActive: false });
+                          }
                         }}
                       >
                         Deactivate
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
+                        onClick={() => toggleActive.mutate({ id: u.id, isActive: true })}
+                      >
+                        Reactivate
                       </Button>
                     )}
                   </td>
@@ -187,7 +300,7 @@ interface LocationRow {
 
 const createLocationSchema = z.object({
   name: z.string().min(2),
-  ownerId: z.string().uuid("Enter a valid owner ID"),
+  ownerId: z.string().uuid("Select an owner"),
   address: z.string().optional(),
 });
 type CreateLocationData = z.infer<typeof createLocationSchema>;
@@ -201,6 +314,13 @@ function LocationsTab() {
     queryKey: ["admin-locations"],
     queryFn: () => fetchApi<LocationRow[]>("/api/locations"),
   });
+
+  const { data: allUsers } = useQuery({
+    queryKey: ["admin-users"],
+    queryFn: () => fetchApi<UserRow[]>("/api/users"),
+  });
+
+  const owners = allUsers?.filter((u) => u.role === "OWNER" && u.isActive) ?? [];
 
   const createLocation = useMutation({
     mutationFn: (body: CreateLocationData) =>
@@ -232,7 +352,14 @@ function LocationsTab() {
         <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400">
           {locations ? `${locations.length} locations` : "Locations"}
         </h2>
-        <Button size="sm" onClick={() => { setShowForm((s) => !s); reset(); setFormError(null); }}>
+        <Button
+          size="sm"
+          onClick={() => {
+            setShowForm((s) => !s);
+            reset();
+            setFormError(null);
+          }}
+        >
           <Plus className="h-4 w-4" />
           Add location
         </Button>
@@ -243,7 +370,11 @@ function LocationsTab() {
           onSubmit={handleSubmit((d) => createLocation.mutate(d))}
           className="space-y-3 rounded-lg border bg-gray-50 p-4 dark:bg-gray-800"
         >
-          {formError && <Alert variant="destructive"><AlertDescription>{formError}</AlertDescription></Alert>}
+          {formError && (
+            <Alert variant="destructive">
+              <AlertDescription>{formError}</AlertDescription>
+            </Alert>
+          )}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1">
               <Label htmlFor="l-name">Location name</Label>
@@ -251,12 +382,30 @@ function LocationsTab() {
               {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
             </div>
             <div className="space-y-1">
-              <Label htmlFor="l-owner">Owner ID</Label>
-              <Input id="l-owner" placeholder="UUID" {...register("ownerId")} />
+              <Label htmlFor="l-owner">Owner</Label>
+              <select
+                id="l-owner"
+                className="h-11 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                {...register("ownerId")}
+              >
+                <option value="">— Select owner —</option>
+                {owners.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name ?? o.email}
+                  </option>
+                ))}
+              </select>
               {errors.ownerId && <p className="text-xs text-destructive">{errors.ownerId.message}</p>}
+              {owners.length === 0 && (
+                <p className="text-xs text-gray-400 dark:text-gray-500">
+                  No active owners found. Create an Owner user first.
+                </p>
+              )}
             </div>
             <div className="space-y-1 sm:col-span-2">
-              <Label htmlFor="l-address">Address <span className="text-gray-400">(optional)</span></Label>
+              <Label htmlFor="l-address">
+                Address <span className="text-gray-400">(optional)</span>
+              </Label>
               <Input id="l-address" {...register("address")} />
             </div>
           </div>
@@ -264,22 +413,35 @@ function LocationsTab() {
             <Button type="submit" size="sm" disabled={createLocation.isPending}>
               {createLocation.isPending ? "Creating…" : "Create"}
             </Button>
-            <Button type="button" size="sm" variant="outline" onClick={() => setShowForm(false)}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setShowForm(false)}
+            >
               Cancel
             </Button>
           </div>
         </form>
       )}
 
-      {isLoading && <div className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">Loading…</div>}
+      {isLoading && (
+        <div className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">Loading…</div>
+      )}
 
       {locations && (
         <div className="space-y-2">
           {locations.map((loc) => (
-            <div key={loc.id} className="flex items-center justify-between rounded-lg border bg-white px-4 py-3 dark:bg-gray-900">
+            <div
+              key={loc.id}
+              className="flex items-center justify-between rounded-lg border bg-white px-4 py-3 dark:bg-gray-900"
+            >
               <div>
                 <p className="font-medium text-gray-900 dark:text-gray-100">{loc.name}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{loc.owner.name}{loc.address ? ` · ${loc.address}` : ""}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {loc.owner.name}
+                  {loc.address ? ` · ${loc.address}` : ""}
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant={loc.qrActive ? "success" : "secondary"}>
@@ -326,7 +488,9 @@ export function AdminPanel() {
             key={t}
             onClick={() => setTab(t)}
             className={`rounded-md px-4 py-2 text-sm font-medium capitalize transition-colors ${
-              tab === t ? "bg-primary text-primary-foreground shadow-sm" : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+              tab === t
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
             }`}
           >
             {t}

@@ -7,6 +7,7 @@ import { LogOut, Ticket, BarChart2, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import type { Route } from "next";
 import type { Role } from "@schmittnet/types";
 
 interface DashboardNavProps {
@@ -14,7 +15,7 @@ interface DashboardNavProps {
 }
 
 interface NavItem {
-  href: string;
+  href: Route;
   label: string;
   icon: React.ReactNode;
   roles: Role[];

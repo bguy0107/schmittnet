@@ -84,9 +84,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         session.user.id = token.sub;
-        // @ts-expect-error — extended fields declared in types/next-auth.d.ts
         session.user.role = dbUser.role;
-        // @ts-expect-error
         session.user.ownerId = dbUser.ownerId;
       }
       return session;

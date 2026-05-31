@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { signIn } from "next-auth/react";
+import type { Route } from "next";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,7 +45,7 @@ export function LoginForm() {
       return;
     }
 
-    router.push(decodeURIComponent(callbackUrl));
+    router.push(decodeURIComponent(callbackUrl) as Route);
     router.refresh();
   }
 
