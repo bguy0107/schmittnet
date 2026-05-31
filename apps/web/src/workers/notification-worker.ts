@@ -1,4 +1,4 @@
-import { Worker, type Job } from "bullmq";
+import { Worker, type Job, type ConnectionOptions } from "bullmq";
 import { createTransport } from "nodemailer";
 import { prisma } from "@/src/lib/prisma";
 import { redis } from "@/src/lib/redis";
@@ -148,7 +148,7 @@ export function startNotificationWorker() {
       await processJob(job, emailTransport);
     },
     {
-      connection: redis,
+      connection: redis as unknown as ConnectionOptions,
       concurrency: 5,
     },
   );

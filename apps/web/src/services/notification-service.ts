@@ -1,4 +1,4 @@
-import { Queue } from "bullmq";
+import { Queue, type ConnectionOptions } from "bullmq";
 import { redis } from "@/src/lib/redis";
 import { logger } from "@/src/lib/logger";
 import type { Category } from "@schmittnet/types";
@@ -15,7 +15,7 @@ let _queue: Queue<NotificationJobData> | null = null;
 
 function getQueue(): Queue<NotificationJobData> {
   if (!_queue) {
-    _queue = new Queue(QUEUE_NAME, { connection: redis }) as Queue<NotificationJobData>;
+    _queue = new Queue(QUEUE_NAME, { connection: redis as unknown as ConnectionOptions }) as Queue<NotificationJobData>;
   }
   return _queue;
 }
