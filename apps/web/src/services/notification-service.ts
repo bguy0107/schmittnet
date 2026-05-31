@@ -15,7 +15,7 @@ let _queue: Queue<NotificationJobData> | null = null;
 
 function getQueue(): Queue<NotificationJobData> {
   if (!_queue) {
-    _queue = new Queue<NotificationJobData>(QUEUE_NAME, { connection: redis });
+    _queue = new Queue(QUEUE_NAME, { connection: redis }) as Queue<NotificationJobData>;
   }
   return _queue;
 }
