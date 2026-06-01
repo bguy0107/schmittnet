@@ -54,7 +54,7 @@ export const userService = {
       notificationEmail: data.notificationEmail,
     });
 
-    await notificationService.enqueueUserWelcome(data.email, data.name);
+    await notificationService.enqueueUserWelcome(data.email, data.name, data.password);
 
     return user;
   },

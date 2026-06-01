@@ -259,8 +259,11 @@ async function processJob(
     const subject = "[SchmittNet] Welcome to SchmittNet";
     const text =
       `Hi ${data.recipientName},\n\n` +
-      `Your SchmittNet account has been created. You can log in at:\n\n` +
-      `  ${appUrl}\n\n` +
+      `Your SchmittNet account has been created. Your login details are below.\n\n` +
+      `  URL:      ${appUrl}\n` +
+      `  Email:    ${data.recipientEmail}\n` +
+      `  Password: ${data.temporaryPassword}\n\n` +
+      `Please change your password after your first login.\n\n` +
       `If you have any questions, contact your administrator.\n\n` +
       `— SchmittNet`;
     await sendEmail(emailTransport, data.recipientEmail, subject, text);

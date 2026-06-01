@@ -9,7 +9,7 @@ export type NotificationJobData =
   | { type: "AWAITING_APPROVAL"; ticketId: string; locationId: string }
   | { type: "RESOLVED"; ticketId: string; locationId: string }
   | { type: "APPROVAL_DECISION"; ticketId: string; recipientId: string; decision: "APPROVED" | "DECLINED" }
-  | { type: "USER_WELCOME"; recipientEmail: string; recipientName: string };
+  | { type: "USER_WELCOME"; recipientEmail: string; recipientName: string; temporaryPassword: string };
 
 const QUEUE_NAME = "notifications";
 
@@ -87,9 +87,9 @@ export const notificationService = {
       );
   },
 
-  async enqueueUserWelcome(recipientEmail: string, recipientName: string) {
+  async enqueueUserWelcome(recipientEmail: string, recipientName: string, temporaryPassword: string) {
     await getQueue()
-      .add("user-welcome", { type: "USER_WELCOME", recipientEmail, recipientName })
+      .add("user-welcome", { type: "USER_WELCOME", recipientEmail, recipientName, temporaryPassword })
       .catch((err: unknown) =>
         logger.error("Failed to enqueue USER_WELCOME notification", {
           error: String(err),
