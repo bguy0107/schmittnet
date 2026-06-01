@@ -29,7 +29,7 @@ const PRIORITY_COLOR: Record<string, number> = {
 };
 
 function ticketUrl(ticketId: string): string | undefined {
-  return env.APP_URL ? `${env.APP_URL}/dashboard/tickets/${ticketId}` : undefined;
+  return env.APP_URL ? `${env.APP_URL}/tickets/${ticketId}` : undefined;
 }
 
 function makeEmbed(fields: Omit<DiscordEmbed, "footer" | "timestamp">): DiscordEmbed {
