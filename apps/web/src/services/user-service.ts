@@ -2,7 +2,6 @@ import { z } from "zod";
 import { hash } from "@node-rs/argon2";
 import { userRepository } from "@/src/repositories/user-repository";
 import { ForbiddenError, NotFoundError, ConflictError } from "@/src/lib/errors";
-import { prisma } from "@/src/lib/prisma";
 import type { Role } from "@schmittnet/types";
 
 const createUserSchema = z.object({
@@ -38,7 +37,7 @@ export const userService = {
 
     const data = createUserSchema.parse(body);
 
-    const existing = await prisma.user.findUnique({ where: { email: data.email } });
+    const existing = await userRepository.findByEmail(data.email);
     if (existing) throw new ConflictError("A user with this email already exists");
 
     const passwordHash = await hash(data.password);
@@ -75,16 +74,6 @@ export const userService = {
 
     if (data.password) {
       updates.passwordHash = await hash(data.password);
-    }
-
-    if (data.isActive === false) {
-      await userRepository.deactivate(id);
-      return userRepository.findById(id);
-    }
-
-    // If role changed, invalidate all sessions so the new role takes effect immediately.
-    if (data.role && data.role !== existing.role) {
-      await prisma.session.deleteMany({ where: { userId: id } });
     }
 
     return userRepository.update(id, updates);

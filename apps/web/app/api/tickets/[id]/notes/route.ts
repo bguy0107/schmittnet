@@ -16,7 +16,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const body: unknown = await req.json();
 
   try {
-    const note = await ticketService.addNote(id, session.user.id, session.user.role, body);
+    const note = await ticketService.addNote(id, session.user.id, session.user.role, session.user.ownerId, body);
     return NextResponse.json(note, { status: 201 });
   } catch (error) {
     if (error instanceof AppError) {

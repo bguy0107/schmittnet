@@ -35,6 +35,17 @@ export const statusTransitionSchema = z.object({
   onHoldReason: z.string().max(500).optional(),
 });
 
+const ALLOWED_TRANSITIONS: Partial<Record<string, readonly string[]>> = {
+  OPEN:               ["IN_PROGRESS", "CANCELLED"],
+  IN_PROGRESS:        ["ON_HOLD", "AWAITING_APPROVAL", "RESOLVED", "CANCELLED"],
+  ON_HOLD:            ["IN_PROGRESS", "CANCELLED"],
+  // AWAITING_APPROVAL exits via resolveApproval (APPROVED→RESOLVED, DECLINED→IN_PROGRESS).
+  // Technicians may only cancel it directly.
+  AWAITING_APPROVAL:  ["CANCELLED"],
+  RESOLVED:           [],
+  CANCELLED:          [],
+};
+
 export const ticketService = {
   async getLocationContext(token: string) {
     const location = await locationRepository.findByToken(token);
@@ -170,12 +181,9 @@ export const ticketService = {
     if (!ticket) throw new NotFoundError("Ticket not found");
 
     if (actorRole === "OWNER" || actorRole === "OWNER_STAFF") {
-      if (!actorOwnerId || ticket.location.id !== undefined) {
-        const ownerIds = await locationRepository.getOwnerIdsByLocationIds([ticket.location.id]);
-        if (!ownerIds.includes(actorOwnerId ?? "")) {
-          throw new ForbiddenError("Access denied");
-        }
-      }
+      if (!actorOwnerId) throw new ForbiddenError("No owner context");
+      const ownerIds = await locationRepository.getOwnerIdsByLocationIds([ticket.location.id]);
+      if (!ownerIds.includes(actorOwnerId)) throw new ForbiddenError("Access denied");
     }
 
     return ticket;
@@ -193,16 +201,26 @@ export const ticketService = {
 
     const data = statusTransitionSchema.parse(body);
 
+    const current = await ticketRepository.findById(ticketId);
+    if (!current) throw new NotFoundError("Ticket not found");
+
+    const allowed = ALLOWED_TRANSITIONS[current.status] ?? [];
+    if (!allowed.includes(data.status)) {
+      throw new ValidationError(`Cannot transition from ${current.status} to ${data.status}`);
+    }
+
+    let ticket: Awaited<ReturnType<typeof ticketRepository.updateStatus>>;
+
     if (data.status === "AWAITING_APPROVAL") {
       const existing = await ticketRepository.getPendingApproval(ticketId);
       if (existing) throw new ConflictError("A pending approval request already exists");
-      await ticketRepository.createApproval(ticketId, actorId);
+      ticket = await ticketRepository.createApprovalAndUpdateStatus(ticketId, actorId);
+    } else {
+      ticket = await ticketRepository.updateStatus(ticketId, data.status, {
+        ...(data.status === "RESOLVED" ? { resolvedAt: new Date() } : {}),
+        ...(data.status === "ON_HOLD" ? { onHoldReason: data.onHoldReason } : {}),
+      });
     }
-
-    const ticket = await ticketRepository.updateStatus(ticketId, data.status, {
-      ...(data.status === "RESOLVED" ? { resolvedAt: new Date() } : {}),
-      ...(data.status === "ON_HOLD" ? { onHoldReason: data.onHoldReason } : {}),
-    });
 
     logger.info("Ticket status updated", {
       ticket_id: ticketId,
@@ -211,9 +229,6 @@ export const ticketService = {
       actor_id: actorId,
     });
 
-    if (data.status === "IN_PROGRESS") {
-      await notificationService.enqueueTicketInProgress(ticketId, ticket.locationId, ticket.category);
-    }
     if (data.status === "AWAITING_APPROVAL") {
       await notificationService.enqueueAwaitingApproval(ticketId, ticket.locationId);
     }
@@ -224,9 +239,17 @@ export const ticketService = {
     return ticket;
   },
 
-  async addNote(ticketId: string, actorId: string, actorRole: Role, body: unknown) {
+  async addNote(ticketId: string, actorId: string, actorRole: Role, actorOwnerId: string | null, body: unknown) {
     if (actorRole !== "TECHNICIAN" && actorRole !== "SUPER_ADMIN") {
       throw new ForbiddenError("Only technicians may add notes");
+    }
+
+    if (actorRole === "TECHNICIAN" && actorOwnerId) {
+      const allowedLocationIds = await locationRepository.getLocationIdsByOwner(actorOwnerId);
+      const ticket = await ticketRepository.findById(ticketId);
+      if (!ticket || !allowedLocationIds.includes(ticket.location.id)) {
+        throw new ForbiddenError("Access denied");
+      }
     }
 
     const { content } = z
@@ -275,8 +298,11 @@ export const ticketService = {
 
     const result = await ticketRepository.resolveApproval(approvalId, actorId, status, notes);
 
-    // Declined → return ticket to IN_PROGRESS
-    if (status === "DECLINED") {
+    if (status === "APPROVED") {
+      await ticketRepository.updateStatus(ticketId, "RESOLVED", { resolvedAt: new Date() });
+      await notificationService.enqueueResolved(ticketId, result.ticket.locationId);
+    } else {
+      // DECLINED → return ticket to IN_PROGRESS
       await ticketRepository.updateStatus(ticketId, "IN_PROGRESS");
     }
 

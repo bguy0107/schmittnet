@@ -5,7 +5,9 @@ import type { NextAuthConfig } from "next-auth";
 // Full server-side config (with Credentials provider) is in auth.ts.
 export const authConfig: NextAuthConfig = {
   pages: { signIn: "/login" },
-  // Credentials provider requires JWT strategy in Auth.js v5.
+  // Credentials provider requires JWT strategy in Auth.js v5 (no database adapter for credentials).
+  // Revocation is handled by the session callback in auth.ts re-reading isActive/role on every
+  // request — deactivated users and role changes take effect on the very next API call.
   session: { strategy: "jwt", maxAge: 24 * 60 * 60 },
   providers: [],
   callbacks: {

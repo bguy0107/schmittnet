@@ -2,9 +2,11 @@ import { redis } from "@/src/lib/redis";
 import { RateLimitError } from "@/src/lib/errors";
 
 // Per-token limit is primary because many staff at one location share a NAT IP.
-const TOKEN_LIMIT = 10; // max submissions per token per window
-const IP_LIMIT = 30;    // secondary per-IP limit per window
+const TOKEN_LIMIT = 10;  // max submissions per token per window
+const IP_LIMIT = 30;     // secondary per-IP limit per window
 const WINDOW_SECONDS = 60;
+
+const PRESIGN_IP_LIMIT = 20; // max presigned-URL requests per IP per window
 
 export async function enforceSubmitRateLimit(token: string, ip: string): Promise<void> {
   const now = Date.now();
@@ -23,6 +25,16 @@ export async function enforceSubmitRateLimit(token: string, ip: string): Promise
   }
   if (ipCount > IP_LIMIT) {
     throw new RateLimitError("Too many submissions from this network. Please wait a minute.");
+  }
+}
+
+export async function enforcePresignRateLimit(ip: string): Promise<void> {
+  const now = Date.now();
+  const windowStart = now - WINDOW_SECONDS * 1000;
+  const key = `ratelimit:presign:ip:${ip}`;
+  const count = await slidingWindowCount(key, now, windowStart);
+  if (count > PRESIGN_IP_LIMIT) {
+    throw new RateLimitError("Too many upload requests. Please wait a minute.");
   }
 }
 

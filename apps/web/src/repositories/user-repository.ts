@@ -111,10 +111,6 @@ export const userRepository = {
   },
 
   async deactivate(id: string) {
-    await prisma.$transaction([
-      prisma.user.update({ where: { id }, data: { isActive: false } }),
-      // Immediately invalidate all active sessions for this user.
-      prisma.session.deleteMany({ where: { userId: id } }),
-    ]);
+    await prisma.user.update({ where: { id }, data: { isActive: false } });
   },
 };

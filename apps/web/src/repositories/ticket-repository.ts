@@ -156,6 +156,17 @@ export const ticketRepository = {
     });
   },
 
+  async createApprovalAndUpdateStatus(ticketId: string, requestedBy: string) {
+    return prisma.$transaction(async (tx) => {
+      await tx.ticketApproval.create({ data: { ticketId, requestedBy } });
+      return tx.ticket.update({
+        where: { id: ticketId },
+        data: { status: "AWAITING_APPROVAL", updatedAt: new Date() },
+        select: { id: true, status: true, locationId: true, category: true },
+      });
+    });
+  },
+
   async resolveApproval(
     approvalId: string,
     approverId: string,
@@ -168,7 +179,7 @@ export const ticketRepository = {
       select: {
         id: true,
         status: true,
-        ticket: { select: { id: true, assignedTo: true } },
+        ticket: { select: { id: true, locationId: true, assignedTo: true } },
         requester: { select: { id: true, name: true } },
       },
     });

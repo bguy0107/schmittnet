@@ -6,9 +6,11 @@ import { logger } from "@/src/lib/logger";
 
 type Params = { params: Promise<{ token: string }> };
 
-export async function GET(_req: NextRequest, { params }: Params) {
+export async function GET(req: NextRequest, { params }: Params) {
   const { token } = await params;
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
   try {
+    await enforceSubmitRateLimit(token, ip);
     const location = await ticketService.getLocationContext(token);
     return NextResponse.json(location);
   } catch (error) {

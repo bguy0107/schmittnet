@@ -187,35 +187,6 @@ async function processJob(
     ]);
   }
 
-  if (data.type === "TICKET_IN_PROGRESS") {
-    const ticket = await prisma.ticket.findUnique({
-      where: { id: data.ticketId },
-      select: {
-        id: true,
-        description: true,
-        priority: true,
-        location: { select: { name: true } },
-        assignee: { select: { name: true } },
-      },
-    });
-    if (!ticket) return;
-
-    const ref = data.ticketId.slice(0, 8).toUpperCase();
-    const dEmbed = makeEmbed({
-      title: `🔧 Ticket In Progress`,
-      url: ticketUrl(ticket.id),
-      description: truncate(ticket.description),
-      color: 0x5865f2,
-      fields: [
-        { name: "Location", value: ticket.location.name, inline: true },
-        { name: "Priority", value: ticket.priority, inline: true },
-        { name: "Reference", value: `#${ref}`, inline: true },
-        { name: "Assigned To", value: ticket.assignee?.name ?? "Unassigned", inline: true },
-      ],
-    });
-    await notifyDepartmentAndWatchers(data.ticketId, data.category, dEmbed);
-  }
-
   if (data.type === "AWAITING_APPROVAL" || data.type === "RESOLVED") {
     const location = await prisma.location.findFirst({
       where: { tickets: { some: { id: data.ticketId } } },
