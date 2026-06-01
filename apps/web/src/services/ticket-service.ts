@@ -325,6 +325,26 @@ export const ticketService = {
     return result;
   },
 
+  async getPublicTickets(token: string) {
+    const location = await this.getLocationContext(token);
+    const { rows } = await ticketRepository.findMany({
+      locationIds: [location.id],
+      pageSize: 50,
+    });
+    return {
+      locationName: location.name,
+      tickets: rows
+        .filter((t) => t.status !== "CANCELLED")
+        .map((t) => ({
+          referenceCode: t.id.slice(0, 8).toUpperCase(),
+          category: t.category,
+          status: t.status,
+          description: t.description.slice(0, 120),
+          createdAt: t.createdAt,
+        })),
+    };
+  },
+
   async claimTicket(ticketId: string, actorId: string, actorRole: Role) {
     if (actorRole !== "TECHNICIAN" && actorRole !== "SUPER_ADMIN") {
       throw new ForbiddenError("Only technicians may claim tickets");
