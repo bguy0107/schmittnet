@@ -73,7 +73,6 @@ export const ticketService = {
       ticket_id: ticket.id,
       location_id: location.id,
       category: data.category,
-      priority,
     });
 
     await notificationService.enqueueTicketOpened(ticket.id, location.id, data.category);
