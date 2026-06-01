@@ -21,12 +21,6 @@ type DiscordEmbed = {
   timestamp: string;
 };
 
-const PRIORITY_COLOR: Record<string, number> = {
-  P0: 0xed4245,
-  P1: 0xff9800,
-  P2: 0xfee75c,
-  NORMAL: 0x5865f2,
-};
 
 function ticketUrl(ticketId: string): string | undefined {
   return env.APP_URL ? `${env.APP_URL}/tickets/${ticketId}` : undefined;
@@ -153,7 +147,6 @@ async function processJob(
         select: {
           id: true,
           description: true,
-          priority: true,
           category: true,
           location: { select: { name: true } },
         },
@@ -173,10 +166,9 @@ async function processJob(
       title: `${label} Ticket Opened`,
       url: ticketUrl(ticket.id),
       description: truncate(ticket.description),
-      color: PRIORITY_COLOR[ticket.priority] ?? (PRIORITY_COLOR.NORMAL as number),
+      color: 0x5865f2,
       fields: [
         { name: "Location", value: ticket.location.name, inline: true },
-        { name: "Priority", value: ticket.priority, inline: true },
         { name: "Reference", value: `#${ref}`, inline: true },
       ],
     });
@@ -229,7 +221,6 @@ async function processJob(
       where: { id: data.ticketId },
       select: {
         id: true,
-        priority: true,
         category: true,
         location: { select: { name: true } },
         assignee: { select: { name: true } },
@@ -242,11 +233,10 @@ async function processJob(
     const dEmbed = makeEmbed({
       title: `${label} Ticket In Progress`,
       url: ticketUrl(ticket.id),
-      color: PRIORITY_COLOR[ticket.priority] ?? (PRIORITY_COLOR.NORMAL as number),
+      color: 0x5865f2,
       fields: [
         { name: "Location", value: ticket.location.name, inline: true },
         { name: "Assigned To", value: ticket.assignee?.name ?? "Unknown", inline: true },
-        { name: "Priority", value: ticket.priority, inline: true },
         { name: "Reference", value: `#${ref}`, inline: true },
       ],
     });
