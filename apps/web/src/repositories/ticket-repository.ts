@@ -92,6 +92,13 @@ export const ticketRepository = {
     });
   },
 
+  async findByIdAndLocation(id: string, locationId: string) {
+    return prisma.ticket.findFirst({
+      where: { id, locationId },
+      select: ticketDetailSelect,
+    });
+  },
+
   async create(data: {
     locationId: string;
     category: Category;
@@ -137,15 +144,50 @@ export const ticketRepository = {
     });
   },
 
-  async addNote(ticketId: string, authorId: string, content: string) {
+  async addNote(ticketId: string, authorId: string | null, content: string) {
     return prisma.ticketNote.create({
-      data: { ticketId, authorId, content },
+      data: { ticketId, authorId: authorId ?? undefined, content },
       select: {
         id: true,
         content: true,
         createdAt: true,
         author: { select: { id: true, name: true } },
       },
+    });
+  },
+
+  async updateDeadline(id: string, deadline: Date | null) {
+    return prisma.ticket.update({
+      where: { id },
+      data: { deadline, updatedAt: new Date() },
+      select: { id: true, deadline: true },
+    });
+  },
+
+  async cancelWithNote(ticketId: string, reason: string) {
+    return prisma.$transaction(async (tx) => {
+      await tx.ticketNote.create({
+        data: { ticketId, content: `Cancelled by staff: ${reason}` },
+      });
+      return tx.ticket.update({
+        where: { id: ticketId },
+        data: { status: "CANCELLED", updatedAt: new Date() },
+        select: { id: true, status: true },
+      });
+    });
+  },
+
+  async addMedia(ticketId: string, storageKey: string) {
+    const ext = storageKey.split(".").pop()?.toLowerCase() ?? "";
+    const isVideo = ext === "mp4" || ext === "mov" || ext === "quicktime";
+    return prisma.ticketMedia.create({
+      data: {
+        ticketId,
+        storageKey,
+        mediaType: isVideo ? "VIDEO" : "PHOTO",
+        mimeType: isVideo ? "video/mp4" : "image/jpeg",
+      },
+      select: { id: true, storageKey: true, mediaType: true },
     });
   },
 

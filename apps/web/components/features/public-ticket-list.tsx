@@ -1,11 +1,14 @@
 "use client";
 
+import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchApi } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 import type { BadgeProps } from "@/components/ui/badge";
 
 interface PublicTicket {
+  id: string;
   referenceCode: string;
   category: "IT" | "MAINTENANCE";
   status: string;
@@ -76,24 +79,28 @@ export function PublicTicketList({ token }: { token: string }) {
         </div>
       ) : (
         data.tickets.map((ticket) => (
-          <div
-            key={ticket.referenceCode}
-            className="rounded-lg border border-gray-100 bg-white p-4 shadow-sm"
+          <Link
+            key={ticket.id}
+            href={`/submit/${token}/tickets/${ticket.id}`}
+            className="flex items-center gap-3 rounded-lg border border-gray-100 bg-white p-4 shadow-sm transition-colors hover:border-primary"
           >
-            <div className="flex items-start justify-between gap-2">
-              <span className="font-mono text-xs font-medium text-gray-400">
-                #{ticket.referenceCode}
-              </span>
-              <Badge variant={STATUS_VARIANT[ticket.status] ?? "outline"}>
-                {STATUS_LABELS[ticket.status] ?? ticket.status}
-              </Badge>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-medium text-gray-400">
+                  #{ticket.referenceCode}
+                </span>
+                <Badge variant={STATUS_VARIANT[ticket.status] ?? "outline"}>
+                  {STATUS_LABELS[ticket.status] ?? ticket.status}
+                </Badge>
+              </div>
+              <p className="mt-1.5 line-clamp-2 text-sm text-gray-800">{ticket.description}</p>
+              <div className="mt-1.5 flex items-center gap-3 text-xs text-gray-400">
+                <span>{ticket.category === "IT" ? "🖥️ IT" : "🔧 Maintenance"}</span>
+                <span>{relativeTime(ticket.createdAt)}</span>
+              </div>
             </div>
-            <p className="mt-2 line-clamp-2 text-sm text-gray-800">{ticket.description}</p>
-            <div className="mt-2 flex items-center gap-3 text-xs text-gray-400">
-              <span>{ticket.category === "IT" ? "🖥️ IT" : "🔧 Maintenance"}</span>
-              <span>{relativeTime(ticket.createdAt)}</span>
-            </div>
-          </div>
+            <ChevronRight className="h-4 w-4 shrink-0 text-gray-300" aria-hidden="true" />
+          </Link>
         ))
       )}
     </div>

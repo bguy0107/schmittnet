@@ -38,7 +38,7 @@ interface TicketRow {
     id: string;
     content: string;
     createdAt: string;
-    author: { id: string; name: string };
+    author: { id: string; name: string | null } | null;
   }>;
   media: Array<{ id: string; storageKey: string; mediaType: "PHOTO" | "VIDEO"; mimeType: string; signedUrl: string }>;
   approvals: Array<{
@@ -477,7 +477,7 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
           {t.notes.map((note) => (
             <div key={note.id} className="space-y-1">
               <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
-                <span className="font-medium text-gray-600 dark:text-gray-300">{note.author.name}</span>
+                <span className="font-medium text-gray-600 dark:text-gray-300">{note.author?.name ?? "Staff"}</span>
                 <span>·</span>
                 <span>{formatDateTime(note.createdAt)}</span>
               </div>

@@ -1,0 +1,23 @@
+import { NextRequest, NextResponse } from "next/server";
+import { ticketService } from "@/src/services/ticket-service";
+import { enforceSubmitRateLimit } from "@/src/proxy/rate-limit";
+import { toApiError, AppError } from "@/src/lib/errors";
+import { logger } from "@/src/lib/logger";
+
+type Params = { params: Promise<{ token: string; ticketId: string }> };
+
+export async function GET(req: NextRequest, { params }: Params) {
+  const { token, ticketId } = await params;
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  try {
+    await enforceSubmitRateLimit(token, ip);
+    const data = await ticketService.getPublicTicketDetail(token, ticketId);
+    return NextResponse.json(data);
+  } catch (error) {
+    if (error instanceof AppError) {
+      return NextResponse.json(toApiError(error), { status: error.statusCode });
+    }
+    logger.error("GET /api/tickets/submit/[token]/tickets/[ticketId] unexpected error", { error: String(error) });
+    return NextResponse.json(toApiError(error), { status: 500 });
+  }
+}

@@ -10,6 +10,7 @@ import {
   ValidationError,
 } from "@/src/lib/errors";
 import { logger } from "@/src/lib/logger";
+import { getSignedReadUrl } from "@/src/lib/minio";
 import { notificationService } from "./notification-service";
 import type { Role } from "@schmittnet/types";
 
@@ -325,6 +326,81 @@ export const ticketService = {
     return result;
   },
 
+  async getPublicTicketDetail(token: string, ticketId: string) {
+    const location = await this.getLocationContext(token);
+    const ticket = await ticketRepository.findByIdAndLocation(ticketId, location.id);
+    if (!ticket) throw new NotFoundError("Ticket not found");
+
+    const media = await Promise.all(
+      ticket.media.map(async (m) => ({
+        ...m,
+        signedUrl: await getSignedReadUrl(m.storageKey),
+      })),
+    );
+
+    return { ...ticket, media };
+  },
+
+  async addPublicNote(token: string, ticketId: string, body: unknown) {
+    const { content, mediaKeys } = z.object({
+      content: z.string().min(1).max(2000),
+      mediaKeys: z.array(z.string().min(1)).max(5).optional(),
+    }).parse(body);
+
+    const location = await this.getLocationContext(token);
+    const ticket = await ticketRepository.findByIdAndLocation(ticketId, location.id);
+    if (!ticket) throw new NotFoundError("Ticket not found");
+    if (ticket.status === "CANCELLED" || ticket.status === "RESOLVED") {
+      throw new ValidationError("Cannot add notes to a closed ticket");
+    }
+
+    const note = await ticketRepository.addNote(ticketId, null, content);
+
+    if (mediaKeys && mediaKeys.length > 0) {
+      await Promise.all(
+        mediaKeys.map((key) =>
+          ticketRepository.addMedia(ticketId, key),
+        ),
+      );
+    }
+
+    return note;
+  },
+
+  async cancelPublicTicket(token: string, ticketId: string, body: unknown) {
+    const { reason } = z.object({
+      reason: z.string().min(1).max(500),
+    }).parse(body);
+
+    const location = await this.getLocationContext(token);
+    const ticket = await ticketRepository.findByIdAndLocation(ticketId, location.id);
+    if (!ticket) throw new NotFoundError("Ticket not found");
+    if (ticket.status !== "OPEN") {
+      throw new ValidationError("Only OPEN tickets can be cancelled by staff");
+    }
+
+    const result = await ticketRepository.cancelWithNote(ticketId, reason);
+
+    logger.info("Ticket cancelled by public user", { ticket_id: ticketId, location_id: location.id });
+
+    return result;
+  },
+
+  async updatePublicDeadline(token: string, ticketId: string, body: unknown) {
+    const { deadline } = z.object({
+      deadline: z.string().datetime().nullable(),
+    }).parse(body);
+
+    const location = await this.getLocationContext(token);
+    const ticket = await ticketRepository.findByIdAndLocation(ticketId, location.id);
+    if (!ticket) throw new NotFoundError("Ticket not found");
+    if (ticket.status === "CANCELLED" || ticket.status === "RESOLVED") {
+      throw new ValidationError("Cannot update deadline on a closed ticket");
+    }
+
+    return ticketRepository.updateDeadline(ticketId, deadline ? new Date(deadline) : null);
+  },
+
   async getPublicTickets(token: string) {
     const location = await this.getLocationContext(token);
     const { rows } = await ticketRepository.findMany({
@@ -336,6 +412,7 @@ export const ticketService = {
       tickets: rows
         .filter((t) => t.status !== "CANCELLED")
         .map((t) => ({
+          id: t.id,
           referenceCode: t.id.slice(0, 8).toUpperCase(),
           category: t.category,
           status: t.status,

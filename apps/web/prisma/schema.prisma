@@ -193,12 +193,12 @@ model TicketMedia {
 model TicketNote {
   id        String   @id @default(uuid())
   ticketId  String   @map("ticket_id")
-  authorId  String   @map("author_id")
+  authorId  String?  @map("author_id")
   content   String
   createdAt DateTime @default(now()) @map("created_at")
 
   ticket Ticket @relation(fields: [ticketId], references: [id])
-  author User   @relation(fields: [authorId], references: [id])
+  author User?  @relation(fields: [authorId], references: [id])
 
   @@map("ticket_notes")
 }
