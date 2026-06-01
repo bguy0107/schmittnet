@@ -25,6 +25,8 @@ const envSchema = z.object({
 
   AUTH_SECRET: z.string().min(32),
 
+  APP_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
+
   GMAIL_USER: z.preprocess(emptyToUndefined, z.string().email().optional()),
   GMAIL_APP_PASSWORD: z.preprocess(emptyToUndefined, z.string().optional()),
 

@@ -11,6 +11,31 @@ import type { Category } from "@schmittnet/types";
 
 const QUEUE_NAME = "notifications";
 
+type DiscordEmbed = {
+  title: string;
+  url?: string;
+  description?: string;
+  color: number;
+  fields?: Array<{ name: string; value: string; inline?: boolean }>;
+  footer: { text: string };
+  timestamp: string;
+};
+
+const PRIORITY_COLOR: Record<string, number> = {
+  P0: 0xed4245,
+  P1: 0xff9800,
+  P2: 0xfee75c,
+  NORMAL: 0x5865f2,
+};
+
+function ticketUrl(ticketId: string): string | undefined {
+  return env.APP_URL ? `${env.APP_URL}/dashboard/tickets/${ticketId}` : undefined;
+}
+
+function makeEmbed(fields: Omit<DiscordEmbed, "footer" | "timestamp">): DiscordEmbed {
+  return { ...fields, footer: { text: "SchmittNet Ticketing" }, timestamp: new Date().toISOString() };
+}
+
 // Email transport (Gmail SMTP). Only initialised when credentials are present.
 function makeEmailTransport() {
   if (!env.GMAIL_USER || !env.GMAIL_APP_PASSWORD) return null;
@@ -35,12 +60,12 @@ async function sendEmail(
   }
 }
 
-async function sendDiscord(webhookUrl: string, message: string) {
+async function sendDiscordEmbed(webhookUrl: string, e: DiscordEmbed) {
   try {
     const res = await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content: message }),
+      body: JSON.stringify({ embeds: [e] }),
     });
     if (!res.ok) throw new Error(`Discord returned ${res.status}`);
     logger.info("Discord notification sent", { webhook: webhookUrl.slice(0, 40) });
@@ -57,6 +82,7 @@ async function notifyUsers(
   }>,
   subject: string,
   body: string,
+  discordEmbed: DiscordEmbed,
   emailTransport: ReturnType<typeof makeEmailTransport>,
 ) {
   await Promise.allSettled(
@@ -66,7 +92,7 @@ async function notifyUsers(
         jobs.push(sendEmail(emailTransport, u.email, subject, body));
       }
       if (u.notificationDiscord) {
-        jobs.push(sendDiscord(u.notificationDiscord, `**${subject}**\n${body}`));
+        jobs.push(sendDiscordEmbed(u.notificationDiscord, discordEmbed));
       }
       return jobs;
     }),
@@ -76,14 +102,13 @@ async function notifyUsers(
 async function notifyDepartmentAndWatchers(
   ticketId: string,
   category: Category,
-  message: string,
+  discordEmbed: DiscordEmbed,
 ) {
   const [departmentWebhook, watchers] = await Promise.all([
     settingRepository.getDiscordWebhook(category),
     watcherRepository.findByTicket(ticketId),
   ]);
 
-  // Collect unique webhook URLs — department channel first, then watchers
   const seen = new Set<string>();
   const urls: string[] = [];
   if (departmentWebhook) {
@@ -97,7 +122,11 @@ async function notifyDepartmentAndWatchers(
     }
   }
 
-  await Promise.allSettled(urls.map((url) => sendDiscord(url, message)));
+  await Promise.allSettled(urls.map((url) => sendDiscordEmbed(url, discordEmbed)));
+}
+
+function truncate(text: string, max = 300): string {
+  return text.length > max ? text.slice(0, max - 1) + "…" : text;
 }
 
 async function processJob(
@@ -110,40 +139,68 @@ async function processJob(
     const [ticket, techs] = await Promise.all([
       prisma.ticket.findUnique({
         where: { id: data.ticketId },
-        select: { id: true, location: { select: { name: true } } },
+        select: {
+          id: true,
+          description: true,
+          priority: true,
+          category: true,
+          location: { select: { name: true } },
+        },
       }),
       prisma.user.findMany({
-        where: {
-          role: "TECHNICIAN",
-          isActive: true,
-          categories: { has: data.category },
-        },
+        where: { role: "TECHNICIAN", isActive: true, categories: { has: data.category } },
         select: { email: true, notificationEmail: true, notificationDiscord: true },
       }),
     ]);
-
     if (!ticket) return;
+
+    const ref = data.ticketId.slice(0, 8).toUpperCase();
+    const label = ticket.category === "IT" ? "💻 IT" : "🔧 Maintenance";
     const subject = `[SchmittNet] New ${data.category} Ticket — ${ticket.location.name}`;
-    const body = `A new ticket (#${data.ticketId.slice(0, 8).toUpperCase()}) has been submitted at ${ticket.location.name}.`;
+    const body = `A new ticket (#${ref}) has been submitted at ${ticket.location.name}.`;
+    const dEmbed = makeEmbed({
+      title: `${label} Ticket Opened`,
+      url: ticketUrl(ticket.id),
+      description: truncate(ticket.description),
+      color: PRIORITY_COLOR[ticket.priority] ?? (PRIORITY_COLOR.NORMAL as number),
+      fields: [
+        { name: "Location", value: ticket.location.name, inline: true },
+        { name: "Priority", value: ticket.priority, inline: true },
+        { name: "Reference", value: `#${ref}`, inline: true },
+      ],
+    });
+
     await Promise.all([
-      notifyUsers(techs, subject, body, emailTransport),
-      notifyDepartmentAndWatchers(
-        data.ticketId,
-        data.category,
-        `**${subject}**\n${body}`,
-      ),
+      notifyUsers(techs, subject, body, dEmbed, emailTransport),
+      notifyDepartmentAndWatchers(data.ticketId, data.category, dEmbed),
     ]);
   }
 
   if (data.type === "TICKET_IN_PROGRESS") {
     const ticket = await prisma.ticket.findUnique({
       where: { id: data.ticketId },
-      select: { id: true, location: { select: { name: true } } },
+      select: {
+        id: true,
+        description: true,
+        priority: true,
+        location: { select: { name: true } },
+      },
     });
     if (!ticket) return;
-    const subject = `[SchmittNet] ${data.category} Ticket In Progress — ${ticket.location.name}`;
-    const body = `Ticket #${data.ticketId.slice(0, 8).toUpperCase()} at ${ticket.location.name} is now in progress.`;
-    await notifyDepartmentAndWatchers(data.ticketId, data.category, `**${subject}**\n${body}`);
+
+    const ref = data.ticketId.slice(0, 8).toUpperCase();
+    const dEmbed = makeEmbed({
+      title: `🔧 Ticket In Progress`,
+      url: ticketUrl(ticket.id),
+      description: truncate(ticket.description),
+      color: 0x5865f2,
+      fields: [
+        { name: "Location", value: ticket.location.name, inline: true },
+        { name: "Priority", value: ticket.priority, inline: true },
+        { name: "Reference", value: `#${ref}`, inline: true },
+      ],
+    });
+    await notifyDepartmentAndWatchers(data.ticketId, data.category, dEmbed);
   }
 
   if (data.type === "AWAITING_APPROVAL" || data.type === "RESOLVED") {
@@ -162,15 +219,25 @@ async function processJob(
       select: { email: true, notificationEmail: true, notificationDiscord: true },
     });
 
+    const ref = data.ticketId.slice(0, 8).toUpperCase();
     const isApproval = data.type === "AWAITING_APPROVAL";
     const subject = isApproval
       ? `[SchmittNet] Approval Required — ${location.name}`
       : `[SchmittNet] Ticket Resolved — ${location.name}`;
     const body = isApproval
-      ? `Ticket #${data.ticketId.slice(0, 8).toUpperCase()} at ${location.name} is awaiting budget approval.`
-      : `Ticket #${data.ticketId.slice(0, 8).toUpperCase()} at ${location.name} has been resolved.`;
+      ? `Ticket #${ref} at ${location.name} is awaiting budget approval.`
+      : `Ticket #${ref} at ${location.name} has been resolved.`;
+    const dEmbed = makeEmbed({
+      title: isApproval ? `💰 Approval Required` : `✅ Ticket Resolved`,
+      url: ticketUrl(data.ticketId),
+      color: isApproval ? 0xffa500 : 0x57f287,
+      fields: [
+        { name: "Location", value: location.name, inline: true },
+        { name: "Reference", value: `#${ref}`, inline: true },
+      ],
+    });
 
-    await notifyUsers(staff, subject, body, emailTransport);
+    await notifyUsers(staff, subject, body, dEmbed, emailTransport);
   }
 
   if (data.type === "APPROVAL_DECISION") {
@@ -180,9 +247,21 @@ async function processJob(
     });
     if (!recipient) return;
 
-    const subject = `[SchmittNet] Approval ${data.decision === "APPROVED" ? "Approved" : "Declined"}`;
-    const body = `Your approval request for ticket #${data.ticketId.slice(0, 8).toUpperCase()} was ${data.decision.toLowerCase()}.`;
-    await notifyUsers([recipient], subject, body, emailTransport);
+    const ref = data.ticketId.slice(0, 8).toUpperCase();
+    const approved = data.decision === "APPROVED";
+    const subject = `[SchmittNet] Approval ${approved ? "Approved" : "Declined"}`;
+    const body = `Your approval request for ticket #${ref} was ${data.decision.toLowerCase()}.`;
+    const dEmbed = makeEmbed({
+      title: approved ? `✅ Approval Approved` : `❌ Approval Declined`,
+      url: ticketUrl(data.ticketId),
+      color: approved ? 0x57f287 : 0xed4245,
+      fields: [
+        { name: "Reference", value: `#${ref}`, inline: true },
+        { name: "Decision", value: approved ? "Approved" : "Declined", inline: true },
+      ],
+    });
+
+    await notifyUsers([recipient], subject, body, dEmbed, emailTransport);
   }
 }
 
