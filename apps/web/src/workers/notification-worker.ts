@@ -195,6 +195,7 @@ async function processJob(
         description: true,
         priority: true,
         location: { select: { name: true } },
+        assignee: { select: { name: true } },
       },
     });
     if (!ticket) return;
@@ -209,6 +210,7 @@ async function processJob(
         { name: "Location", value: ticket.location.name, inline: true },
         { name: "Priority", value: ticket.priority, inline: true },
         { name: "Reference", value: `#${ref}`, inline: true },
+        { name: "Assigned To", value: ticket.assignee?.name ?? "Unassigned", inline: true },
       ],
     });
     await notifyDepartmentAndWatchers(data.ticketId, data.category, dEmbed);
