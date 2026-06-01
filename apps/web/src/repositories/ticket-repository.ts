@@ -75,7 +75,7 @@ export const ticketRepository = {
       prisma.ticket.findMany({
         where,
         select: ticketSummarySelect,
-        orderBy: [{ priority: "asc" }, { createdAt: "desc" }],
+        orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
