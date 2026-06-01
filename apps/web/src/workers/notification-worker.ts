@@ -60,12 +60,17 @@ async function sendEmail(
   }
 }
 
-async function sendDiscordEmbed(webhookUrl: string, e: DiscordEmbed) {
+async function sendDiscordEmbed(webhookUrl: string, e: DiscordEmbed, roleId?: string | null) {
   try {
+    const payload: Record<string, unknown> = { embeds: [e] };
+    if (roleId) {
+      payload.content = `<@&${roleId}>`;
+      payload.allowed_mentions = { roles: [roleId] };
+    }
     const res = await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ embeds: [e] }),
+      body: JSON.stringify(payload),
     });
     if (!res.ok) throw new Error(`Discord returned ${res.status}`);
     logger.info("Discord notification sent", { webhook: webhookUrl.slice(0, 40) });
@@ -104,8 +109,9 @@ async function notifyDepartmentAndWatchers(
   category: Category,
   discordEmbed: DiscordEmbed,
 ) {
-  const [departmentWebhook, watchers] = await Promise.all([
+  const [departmentWebhook, roleId, watchers] = await Promise.all([
     settingRepository.getDiscordWebhook(category),
+    settingRepository.getDiscordRoleId(category),
     watcherRepository.findByTicket(ticketId),
   ]);
 
@@ -122,7 +128,12 @@ async function notifyDepartmentAndWatchers(
     }
   }
 
-  await Promise.allSettled(urls.map((url) => sendDiscordEmbed(url, discordEmbed)));
+  // Only ping the role on the department webhook, not watcher webhooks
+  await Promise.allSettled(
+    urls.map((url) =>
+      sendDiscordEmbed(url, discordEmbed, url === departmentWebhook ? roleId : null),
+    ),
+  );
 }
 
 function truncate(text: string, max = 300): string {

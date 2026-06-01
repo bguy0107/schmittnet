@@ -165,14 +165,23 @@ export function useDiscordSettings() {
   return useQuery({
     queryKey: ["discord-settings"],
     queryFn: () =>
-      fetchApi<{ IT: string | null; MAINTENANCE: string | null }>("/api/settings/discord"),
+      fetchApi<{
+        IT: string | null;
+        MAINTENANCE: string | null;
+        ROLE_IT: string | null;
+        ROLE_MAINTENANCE: string | null;
+      }>("/api/settings/discord"),
   });
 }
 
 export function useUpdateDiscordSetting() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { category: "IT" | "MAINTENANCE"; webhookUrl: string }) =>
+    mutationFn: (body: {
+      category: "IT" | "MAINTENANCE";
+      webhookUrl?: string;
+      roleId?: string;
+    }) =>
       fetchApi("/api/settings/discord", {
         method: "PUT",
         body: JSON.stringify(body),

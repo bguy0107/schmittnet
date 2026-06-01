@@ -840,22 +840,35 @@ function LocationsTab() {
 
 // ─── Discord settings tab ─────────────────────────────────────────────────────
 
+type DiscordSavedKey = "IT_webhook" | "MAINTENANCE_webhook" | "IT_role" | "MAINTENANCE_role";
+
 function DiscordSettingsTab() {
   const { data: settings, isLoading } = useDiscordSettings();
   const update = useUpdateDiscordSetting();
-  const [values, setValues] = useState({ IT: "", MAINTENANCE: "" });
-  const [saved, setSaved] = useState<"IT" | "MAINTENANCE" | null>(null);
+  const [webhooks, setWebhooks] = useState({ IT: "", MAINTENANCE: "" });
+  const [roles, setRoles] = useState({ IT: "", MAINTENANCE: "" });
+  const [saved, setSaved] = useState<DiscordSavedKey | null>(null);
 
   useEffect(() => {
     if (settings) {
-      setValues({ IT: settings.IT ?? "", MAINTENANCE: settings.MAINTENANCE ?? "" });
+      setWebhooks({ IT: settings.IT ?? "", MAINTENANCE: settings.MAINTENANCE ?? "" });
+      setRoles({ IT: settings.ROLE_IT ?? "", MAINTENANCE: settings.ROLE_MAINTENANCE ?? "" });
     }
   }, [settings]);
 
-  function handleSave(category: "IT" | "MAINTENANCE") {
+  function handleSaveWebhook(category: "IT" | "MAINTENANCE") {
+    const key: DiscordSavedKey = `${category}_webhook`;
     update.mutate(
-      { category, webhookUrl: values[category] },
-      { onSuccess: () => { setSaved(category); setTimeout(() => setSaved(null), 2000); } },
+      { category, webhookUrl: webhooks[category] },
+      { onSuccess: () => { setSaved(key); setTimeout(() => setSaved(null), 2000); } },
+    );
+  }
+
+  function handleSaveRole(category: "IT" | "MAINTENANCE") {
+    const key: DiscordSavedKey = `${category}_role`;
+    update.mutate(
+      { category, roleId: roles[category] },
+      { onSuccess: () => { setSaved(key); setTimeout(() => setSaved(null), 2000); } },
     );
   }
 
@@ -871,26 +884,54 @@ function DiscordSettingsTab() {
       </p>
 
       {(["IT", "MAINTENANCE"] as const).map((cat) => (
-        <div key={cat} className="space-y-2">
-          <Label htmlFor={`discord-${cat}`}>{cat === "IT" ? "IT" : "Maintenance"} webhook</Label>
-          <div className="flex gap-2">
-            <Input
-              id={`discord-${cat}`}
-              placeholder="https://discord.com/api/webhooks/…"
-              value={values[cat]}
-              onChange={(e) => setValues((v) => ({ ...v, [cat]: e.target.value }))}
-              className="flex-1"
-            />
-            <Button
-              size="sm"
-              disabled={update.isPending}
-              onClick={() => handleSave(cat)}
-            >
-              {saved === cat ? "Saved!" : "Save"}
-            </Button>
+        <div key={cat} className="space-y-3">
+          <p className="text-sm font-medium">{cat === "IT" ? "IT" : "Maintenance"}</p>
+
+          <div className="space-y-1">
+            <Label htmlFor={`discord-${cat}`}>Webhook URL</Label>
+            <div className="flex gap-2">
+              <Input
+                id={`discord-${cat}`}
+                placeholder="https://discord.com/api/webhooks/…"
+                value={webhooks[cat]}
+                onChange={(e) => setWebhooks((v) => ({ ...v, [cat]: e.target.value }))}
+                className="flex-1"
+              />
+              <Button
+                size="sm"
+                disabled={update.isPending}
+                onClick={() => handleSaveWebhook(cat)}
+              >
+                {saved === `${cat}_webhook` ? "Saved!" : "Save"}
+              </Button>
+            </div>
           </div>
+
+          <div className="space-y-1">
+            <Label htmlFor={`discord-role-${cat}`}>Role ID to ping</Label>
+            <div className="flex gap-2">
+              <Input
+                id={`discord-role-${cat}`}
+                placeholder="e.g. 1234567890123456789"
+                value={roles[cat]}
+                onChange={(e) => setRoles((v) => ({ ...v, [cat]: e.target.value }))}
+                className="flex-1"
+              />
+              <Button
+                size="sm"
+                disabled={update.isPending}
+                onClick={() => handleSaveRole(cat)}
+              >
+                {saved === `${cat}_role` ? "Saved!" : "Save"}
+              </Button>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Right-click a role in Discord → Copy Role ID. Leave blank to disable pinging.
+            </p>
+          </div>
+
           {update.isError && (
-            <p className="text-xs text-destructive">Failed to save — check the URL and try again.</p>
+            <p className="text-xs text-destructive">Failed to save — check the values and try again.</p>
           )}
         </div>
       ))}

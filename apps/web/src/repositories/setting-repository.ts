@@ -6,6 +6,11 @@ const DISCORD_WEBHOOK_KEY: Record<Category, string> = {
   MAINTENANCE: "discord_webhook_maintenance",
 };
 
+const DISCORD_ROLE_KEY: Record<Category, string> = {
+  IT: "discord_role_it",
+  MAINTENANCE: "discord_role_maintenance",
+};
+
 export const settingRepository = {
   async get(key: string): Promise<string | null> {
     const row = await prisma.setting.findUnique({ where: { key } });
@@ -26,5 +31,9 @@ export const settingRepository = {
 
   async getDiscordWebhook(category: Category): Promise<string | null> {
     return this.get(DISCORD_WEBHOOK_KEY[category]);
+  },
+
+  async getDiscordRoleId(category: Category): Promise<string | null> {
+    return this.get(DISCORD_ROLE_KEY[category]);
   },
 };
