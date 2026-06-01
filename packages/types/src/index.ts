@@ -86,7 +86,6 @@ export interface TicketApprovalShape {
 export interface SubmitTicketInput {
   category: Category;
   description: string;
-  urgency: "NORMAL" | "SERVICE_IMPACTING";
   deadline?: string;
   mediaKeys: string[];
 }

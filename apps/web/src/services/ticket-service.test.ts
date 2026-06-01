@@ -34,7 +34,6 @@ describe("ticketService.submitTicket", () => {
       ticketService.submitTicket("valid-token", {
         category: "IT",
         description: "POS terminal is broken — screen is black",
-        urgency: "NORMAL",
         mediaKeys: [], // violates min(1) rule
       }),
     ).rejects.toThrow(); // ZodError
@@ -45,7 +44,6 @@ describe("ticketService.submitTicket", () => {
       ticketService.submitTicket("valid-token", {
         category: "IT",
         description: "Broken", // too short
-        urgency: "NORMAL",
         mediaKeys: ["key1"],
       }),
     ).rejects.toThrow();

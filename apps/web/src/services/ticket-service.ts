@@ -17,7 +17,6 @@ import type { Role } from "@schmittnet/types";
 export const submitTicketSchema = z.object({
   category: z.enum(["IT", "MAINTENANCE"]),
   description: z.string().min(10).max(2000),
-  urgency: z.enum(["NORMAL", "SERVICE_IMPACTING"]),
   deadline: z.string().datetime().optional(),
   mediaKeys: z.array(z.string().min(1)).min(1).max(5),
 });
@@ -25,7 +24,6 @@ export const submitTicketSchema = z.object({
 export const createTicketSchema = z.object({
   locationId: z.string().uuid(),
   category: z.enum(["IT", "MAINTENANCE"]),
-  urgency: z.enum(["NORMAL", "SERVICE_IMPACTING"]),
   description: z.string().min(10).max(2000),
   deadline: z.string().optional(),
   mediaKeys: z.array(z.string().min(1)).max(5).optional(),
@@ -58,13 +56,11 @@ export const ticketService = {
     const location = await this.getLocationContext(token);
     const data = submitTicketSchema.parse(body);
 
-    const priority = data.urgency === "SERVICE_IMPACTING" ? "P0" : "NORMAL";
-
     const ticket = await ticketRepository.create({
       locationId: location.id,
       category: data.category,
       description: data.description,
-      priority,
+      priority: "NORMAL",
       deadline: data.deadline ? new Date(data.deadline) : undefined,
       mediaKeys: data.mediaKeys.map((key) => ({
         storageKey: key,
@@ -110,13 +106,11 @@ export const ticketService = {
     const location = await locationRepository.findById(data.locationId);
     if (!location) throw new NotFoundError("Location not found");
 
-    const priority = data.urgency === "SERVICE_IMPACTING" ? "P0" : "NORMAL";
-
     const ticket = await ticketRepository.create({
       locationId: data.locationId,
       category: data.category,
       description: data.description,
-      priority,
+      priority: "NORMAL",
       deadline: data.deadline ? new Date(data.deadline) : undefined,
       mediaKeys: (data.mediaKeys ?? []).map((key) => ({
         storageKey: key,
@@ -130,7 +124,6 @@ export const ticketService = {
       location_id: data.locationId,
       actor_id: actorId,
       category: data.category,
-      priority,
     });
 
     await notificationService.enqueueTicketOpened(ticket.id, data.locationId, data.category);

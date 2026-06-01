@@ -100,7 +100,6 @@ export function useOpenTicket() {
     mutationFn: (body: {
       locationId: string;
       category: string;
-      urgency: string;
       description: string;
       deadline?: string;
       mediaKeys?: string[];
@@ -118,7 +117,6 @@ export function useSubmitTicket(token: string) {
     mutationFn: (body: {
       category: string;
       description: string;
-      urgency: string;
       deadline?: string;
       mediaKeys: string[];
     }) =>

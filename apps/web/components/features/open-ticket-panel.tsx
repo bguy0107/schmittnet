@@ -17,7 +17,6 @@ const MAX_BYTES = 100 * 1024 * 1024;
 const schema = z.object({
   locationId: z.string().min(1, "Select a location"),
   category: z.enum(["IT", "MAINTENANCE"], { required_error: "Select a category" }),
-  urgency: z.enum(["NORMAL", "SERVICE_IMPACTING"]),
   description: z.string().min(10, "Describe the issue in at least 10 characters").max(2000),
   deadline: z.string().optional(),
 });
@@ -56,7 +55,6 @@ export function OpenTicketPanel({
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { urgency: "NORMAL" },
   });
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -92,7 +90,6 @@ export function OpenTicketPanel({
     await openTicket.mutateAsync({
       locationId: data.locationId,
       category: data.category,
-      urgency: data.urgency,
       description: data.description,
       deadline: data.deadline || undefined,
       mediaKeys,
@@ -156,21 +153,6 @@ export function OpenTicketPanel({
               ))}
             </div>
             {errors.category && <p className="text-xs text-destructive">{errors.category.message}</p>}
-          </div>
-
-          {/* Urgency */}
-          <div className="space-y-2">
-            <Label>Urgency</Label>
-            <div className="grid grid-cols-2 gap-3">
-              <label className="flex cursor-pointer items-center justify-center rounded-md border-2 p-3 text-sm font-medium transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
-                <input type="radio" value="NORMAL" {...register("urgency")} className="sr-only" />
-                Normal
-              </label>
-              <label className="flex cursor-pointer items-center justify-center rounded-md border-2 border-orange-200 p-3 text-sm font-medium text-orange-700 transition-colors has-[:checked]:border-orange-500 has-[:checked]:bg-orange-50 dark:border-orange-800 dark:text-orange-400 dark:has-[:checked]:border-orange-500 dark:has-[:checked]:bg-orange-950">
-                <input type="radio" value="SERVICE_IMPACTING" {...register("urgency")} className="sr-only" />
-                🚨 Service Down
-              </label>
-            </div>
           </div>
 
           {/* Description */}
