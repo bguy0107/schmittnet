@@ -34,9 +34,12 @@ interface TicketRow {
   createdAt: string;
   location: { id: string; name: string };
   assignee: { id: string; name: string } | null;
-  notes: Array<{
+  history: Array<{
     id: string;
-    content: string;
+    type: "NOTE" | "STATUS_CHANGE";
+    content: string | null;
+    fromStatus: string | null;
+    toStatus: string | null;
     createdAt: string;
     author: { id: string; name: string | null } | null;
   }>;
@@ -463,27 +466,43 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
         </CardContent>
       </Card>
 
-      {/* Notes */}
+      {/* History */}
       <Card>
         <CardHeader className="pb-2 pt-4">
           <CardTitle className="text-sm font-medium">
-            Notes{t.notes.length > 0 ? ` (${t.notes.length})` : ""}
+            History{t.history.length > 0 ? ` (${t.history.length})` : ""}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {t.notes.length === 0 && (
-            <p className="text-sm text-gray-400 dark:text-gray-500">No notes yet.</p>
+          {t.history.length === 0 && (
+            <p className="text-sm text-gray-400 dark:text-gray-500">No history yet.</p>
           )}
-          {t.notes.map((note) => (
-            <div key={note.id} className="space-y-1">
-              <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
-                <span className="font-medium text-gray-600 dark:text-gray-300">{note.author?.name ?? "Staff"}</span>
-                <span>·</span>
-                <span>{formatDateTime(note.createdAt)}</span>
+          {t.history.map((entry) =>
+            entry.type === "STATUS_CHANGE" ? (
+              <div key={entry.id} className="flex items-start gap-3">
+                <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-blue-400 dark:bg-blue-500" />
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                    {entry.fromStatus
+                      ? `${statusLabel(entry.fromStatus as never)} → ${statusLabel(entry.toStatus as never)}`
+                      : "Ticket opened"}
+                  </p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">
+                    {entry.author?.name ?? "System"} · {formatDateTime(entry.createdAt)}
+                  </p>
+                </div>
               </div>
-              <p className="text-sm text-gray-700 dark:text-gray-200">{note.content}</p>
-            </div>
-          ))}
+            ) : (
+              <div key={entry.id} className="space-y-1">
+                <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
+                  <span className="font-medium text-gray-600 dark:text-gray-300">{entry.author?.name ?? "Staff"}</span>
+                  <span>·</span>
+                  <span>{formatDateTime(entry.createdAt)}</span>
+                </div>
+                <p className="text-sm text-gray-700 dark:text-gray-200">{entry.content}</p>
+              </div>
+            )
+          )}
 
           {isTech && !isTerminal && (
             <div className="space-y-2 border-t pt-4">

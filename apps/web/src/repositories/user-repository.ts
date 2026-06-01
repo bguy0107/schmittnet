@@ -117,7 +117,7 @@ export const userRepository = {
   async hasAssociatedData(id: string) {
     const [tickets, notes, approvalsReq, approvalsAct, watchers] = await Promise.all([
       prisma.ticket.count({ where: { assignedTo: id } }),
-      prisma.ticketNote.count({ where: { authorId: id } }),
+      prisma.ticketHistory.count({ where: { authorId: id } }),
       prisma.ticketApproval.count({ where: { requestedBy: id } }),
       prisma.ticketApproval.count({ where: { approverId: id } }),
       prisma.ticketWatcher.count({ where: { userId: id } }),

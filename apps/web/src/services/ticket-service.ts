@@ -116,6 +116,7 @@ export const ticketService = {
         mediaType: "PHOTO" as const,
         mimeType: "image/jpeg",
       })),
+      actorId,
     });
 
     logger.info("Ticket created by staff", {
@@ -215,9 +216,11 @@ export const ticketService = {
       });
     }
 
+    await ticketRepository.addStatusChange(ticketId, actorId, current.status, data.status);
+
     logger.info("Ticket status updated", {
       ticket_id: ticketId,
-      from_status: undefined,
+      from_status: current.status,
       to_status: data.status,
       actor_id: actorId,
     });
@@ -252,7 +255,7 @@ export const ticketService = {
       .object({ content: z.string().min(1).max(2000) })
       .parse(body);
 
-    return ticketRepository.addNote(ticketId, actorId, content);
+    return ticketRepository.addHistoryNote(ticketId, actorId, content);
   },
 
   async requestApproval(ticketId: string, actorId: string, actorRole: Role) {
@@ -296,10 +299,12 @@ export const ticketService = {
 
     if (status === "APPROVED") {
       await ticketRepository.updateStatus(ticketId, "RESOLVED", { resolvedAt: new Date() });
+      await ticketRepository.addStatusChange(ticketId, actorId, "AWAITING_APPROVAL", "RESOLVED");
       await notificationService.enqueueResolved(ticketId, result.ticket.locationId);
     } else {
       // DECLINED → return ticket to IN_PROGRESS
       await ticketRepository.updateStatus(ticketId, "IN_PROGRESS");
+      await ticketRepository.addStatusChange(ticketId, actorId, "AWAITING_APPROVAL", "IN_PROGRESS");
     }
 
     logger.info("Approval resolved", {
@@ -346,7 +351,7 @@ export const ticketService = {
       throw new ValidationError("Cannot add notes to a closed ticket");
     }
 
-    const note = await ticketRepository.addNote(ticketId, null, content);
+    const note = await ticketRepository.addHistoryNote(ticketId, null, content);
 
     if (mediaKeys && mediaKeys.length > 0) {
       await Promise.all(
@@ -371,7 +376,7 @@ export const ticketService = {
       throw new ValidationError("Only OPEN tickets can be cancelled by staff");
     }
 
-    const result = await ticketRepository.cancelWithNote(ticketId, reason);
+    const result = await ticketRepository.cancelWithNote(ticketId, reason, ticket.status);
 
     logger.info("Ticket cancelled by public user", { ticket_id: ticketId, location_id: location.id });
 

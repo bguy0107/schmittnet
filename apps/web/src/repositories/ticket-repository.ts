@@ -30,11 +30,14 @@ const ticketDetailSelect = {
   onHoldReason: true,
   resolvedAt: true,
   acknowledgedAt: true,
-  notes: {
+  history: {
     orderBy: { createdAt: "asc" as const },
     select: {
       id: true,
+      type: true,
       content: true,
+      fromStatus: true,
+      toStatus: true,
       createdAt: true,
       author: { select: { id: true, name: true } },
     },
@@ -106,6 +109,7 @@ export const ticketRepository = {
     priority: Priority;
     deadline?: Date;
     mediaKeys: Array<{ storageKey: string; mediaType: "PHOTO" | "VIDEO"; mimeType: string }>;
+    actorId?: string | null;
   }) {
     return prisma.ticket.create({
       data: {
@@ -115,6 +119,13 @@ export const ticketRepository = {
         priority: data.priority,
         deadline: data.deadline,
         media: { create: data.mediaKeys },
+        history: {
+          create: [{
+            type: "STATUS_CHANGE",
+            toStatus: "OPEN",
+            authorId: data.actorId ?? undefined,
+          }],
+        },
       },
       select: { id: true, createdAt: true },
     });
@@ -144,15 +155,36 @@ export const ticketRepository = {
     });
   },
 
-  async addNote(ticketId: string, authorId: string | null, content: string) {
-    return prisma.ticketNote.create({
-      data: { ticketId, authorId: authorId ?? undefined, content },
+  async addHistoryNote(ticketId: string, authorId: string | null, content: string) {
+    return prisma.ticketHistory.create({
+      data: { ticketId, authorId: authorId ?? undefined, type: "NOTE", content },
       select: {
         id: true,
+        type: true,
         content: true,
+        fromStatus: true,
+        toStatus: true,
         createdAt: true,
         author: { select: { id: true, name: true } },
       },
+    });
+  },
+
+  async addStatusChange(
+    ticketId: string,
+    authorId: string | null,
+    fromStatus: string,
+    toStatus: string,
+  ) {
+    return prisma.ticketHistory.create({
+      data: {
+        ticketId,
+        authorId: authorId ?? undefined,
+        type: "STATUS_CHANGE",
+        fromStatus: fromStatus as never,
+        toStatus: toStatus as never,
+      },
+      select: { id: true },
     });
   },
 
@@ -164,10 +196,18 @@ export const ticketRepository = {
     });
   },
 
-  async cancelWithNote(ticketId: string, reason: string) {
+  async cancelWithNote(ticketId: string, reason: string, fromStatus: string) {
     return prisma.$transaction(async (tx) => {
-      await tx.ticketNote.create({
-        data: { ticketId, content: `Cancelled by staff: ${reason}` },
+      await tx.ticketHistory.create({
+        data: { ticketId, type: "NOTE", content: reason },
+      });
+      await tx.ticketHistory.create({
+        data: {
+          ticketId,
+          type: "STATUS_CHANGE",
+          fromStatus: fromStatus as never,
+          toStatus: "CANCELLED",
+        },
       });
       return tx.ticket.update({
         where: { id: ticketId },

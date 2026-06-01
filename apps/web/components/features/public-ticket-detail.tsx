@@ -12,9 +12,12 @@ import type { BadgeProps } from "@/components/ui/badge";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-interface PublicNote {
+interface PublicHistoryEntry {
   id: string;
-  content: string;
+  type: "NOTE" | "STATUS_CHANGE";
+  content: string | null;
+  fromStatus: string | null;
+  toStatus: string | null;
   createdAt: string;
   author: { id: string; name: string | null } | null;
 }
@@ -41,7 +44,7 @@ interface PublicTicketDetailData {
   createdAt: string;
   location: { id: string; name: string };
   assignee: { id: string; name: string | null } | null;
-  notes: PublicNote[];
+  history: PublicHistoryEntry[];
   media: PublicMedia[];
 }
 
@@ -369,28 +372,44 @@ export function PublicTicketDetail({ token, ticketId }: Props) {
         </div>
       )}
 
-      {/* Notes */}
+      {/* History */}
       <div className="rounded-lg border border-gray-100 bg-white p-4 shadow-sm space-y-4">
         <p className="text-sm font-medium text-gray-700">
-          Notes{t.notes.length > 0 ? ` (${t.notes.length})` : ""}
+          History{t.history.length > 0 ? ` (${t.history.length})` : ""}
         </p>
 
-        {t.notes.length === 0 && (
-          <p className="text-sm text-gray-400">No notes yet.</p>
+        {t.history.length === 0 && (
+          <p className="text-sm text-gray-400">No history yet.</p>
         )}
 
-        {t.notes.map((note) => (
-          <div key={note.id} className="space-y-1">
-            <div className="flex items-center gap-2 text-xs text-gray-400">
-              <span className="font-medium text-gray-600">
-                {note.author?.name ?? "Staff"}
-              </span>
-              <span>·</span>
-              <span>{formatDate(note.createdAt)}</span>
+        {t.history.map((entry) =>
+          entry.type === "STATUS_CHANGE" ? (
+            <div key={entry.id} className="flex items-start gap-3">
+              <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-blue-400" />
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium text-gray-700">
+                  {entry.fromStatus
+                    ? `${STATUS_LABELS[entry.fromStatus as keyof typeof STATUS_LABELS] ?? entry.fromStatus} → ${STATUS_LABELS[entry.toStatus as keyof typeof STATUS_LABELS] ?? entry.toStatus}`
+                    : "Ticket opened"}
+                </p>
+                <p className="text-xs text-gray-400">
+                  {entry.author?.name ?? "System"} · {formatDate(entry.createdAt)}
+                </p>
+              </div>
             </div>
-            <p className="text-sm text-gray-700">{note.content}</p>
-          </div>
-        ))}
+          ) : (
+            <div key={entry.id} className="space-y-1">
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                <span className="font-medium text-gray-600">
+                  {entry.author?.name ?? "Staff"}
+                </span>
+                <span>·</span>
+                <span>{formatDate(entry.createdAt)}</span>
+              </div>
+              <p className="text-sm text-gray-700">{entry.content}</p>
+            </div>
+          )
+        )}
 
         {!isTerminal && (
           <div className="space-y-2 border-t pt-4">

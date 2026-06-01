@@ -54,15 +54,20 @@ export interface TicketDetail extends TicketSummary {
   onHoldReason: string | null;
   resolvedAt: string | null;
   acknowledgedAt: string | null;
-  notes: TicketNoteShape[];
+  history: TicketHistoryEntryShape[];
   media: TicketMediaShape[];
   pendingApproval: TicketApprovalShape | null;
 }
 
-export interface TicketNoteShape {
+export type HistoryEntryType = "NOTE" | "STATUS_CHANGE";
+
+export interface TicketHistoryEntryShape {
   id: string;
-  content: string;
-  authorName: string;
+  type: HistoryEntryType;
+  content: string | null;
+  fromStatus: TicketStatus | null;
+  toStatus: TicketStatus | null;
+  authorName: string | null;
   createdAt: string;
 }
 

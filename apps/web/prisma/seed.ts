@@ -223,26 +223,28 @@ async function main() {
     },
   });
 
-  // Notes on a couple of tickets
-  await prisma.ticketNote.upsert({
+  // Seed history entries
+  await prisma.ticketHistory.upsert({
     where: { id: "note-seed-01" },
     update: {},
     create: {
       id: "note-seed-01",
       ticketId: "ticket-seed-05",
       authorId: tech.id,
+      type: "NOTE",
       content: "Confirmed camera hardware is fine. Issue is NVR firmware bug introduced in v3.1.2. Vendor acknowledged and is issuing patch.",
       createdAt: daysAgo(3),
     },
   });
 
-  await prisma.ticketNote.upsert({
+  await prisma.ticketHistory.upsert({
     where: { id: "note-seed-02" },
     update: {},
     create: {
       id: "note-seed-02",
       ticketId: "ticket-seed-07",
       authorId: tech.id,
+      type: "NOTE",
       content: "Replaced 8-port managed switch with spare from inventory. Network stable for 24 hours. Closing ticket.",
       createdAt: daysAgo(9),
     },

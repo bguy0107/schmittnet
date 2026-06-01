@@ -49,6 +49,11 @@ enum ApprovalStatus {
   DECLINED
 }
 
+enum HistoryEntryType {
+  NOTE
+  STATUS_CHANGE
+}
+
 // ─── Auth.js v5 adapter models ────────────────────────────────────────────────
 
 // Included for OAuth extensibility; not used by Credentials provider in v1.
@@ -128,7 +133,7 @@ model User {
   accounts           Account[]
   sessions           Session[]
   assignedTickets    Ticket[]         @relation("AssignedTechnician")
-  notes              TicketNote[]
+  history            TicketHistory[]
   approvalsRequested TicketApproval[] @relation("RequestedBy")
   approvalsActioned  TicketApproval[] @relation("ActionedBy")
   watchedTickets     TicketWatcher[]
@@ -170,7 +175,7 @@ model Ticket {
   location  Location         @relation(fields: [locationId], references: [id])
   assignee  User?            @relation("AssignedTechnician", fields: [assignedTo], references: [id])
   media     TicketMedia[]
-  notes     TicketNote[]
+  history   TicketHistory[]
   approvals TicketApproval[]
   watchers  TicketWatcher[]
 
@@ -190,17 +195,20 @@ model TicketMedia {
   @@map("ticket_media")
 }
 
-model TicketNote {
-  id        String   @id @default(uuid())
-  ticketId  String   @map("ticket_id")
-  authorId  String?  @map("author_id")
-  content   String
-  createdAt DateTime @default(now()) @map("created_at")
+model TicketHistory {
+  id         String           @id @default(uuid())
+  ticketId   String           @map("ticket_id")
+  authorId   String?          @map("author_id")
+  type       HistoryEntryType @default(NOTE)
+  content    String?
+  fromStatus TicketStatus?    @map("from_status")
+  toStatus   TicketStatus?    @map("to_status")
+  createdAt  DateTime         @default(now()) @map("created_at")
 
   ticket Ticket @relation(fields: [ticketId], references: [id])
   author User?  @relation(fields: [authorId], references: [id])
 
-  @@map("ticket_notes")
+  @@map("ticket_history")
 }
 
 model TicketApproval {
