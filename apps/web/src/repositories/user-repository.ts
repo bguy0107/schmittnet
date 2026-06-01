@@ -113,4 +113,19 @@ export const userRepository = {
   async deactivate(id: string) {
     await prisma.user.update({ where: { id }, data: { isActive: false } });
   },
+
+  async hasAssociatedData(id: string) {
+    const [tickets, notes, approvalsReq, approvalsAct, watchers] = await Promise.all([
+      prisma.ticket.count({ where: { assignedTo: id } }),
+      prisma.ticketNote.count({ where: { authorId: id } }),
+      prisma.ticketApproval.count({ where: { requestedBy: id } }),
+      prisma.ticketApproval.count({ where: { approverId: id } }),
+      prisma.ticketWatcher.count({ where: { userId: id } }),
+    ]);
+    return tickets + notes + approvalsReq + approvalsAct + watchers > 0;
+  },
+
+  async delete(id: string) {
+    await prisma.user.delete({ where: { id } });
+  },
 };

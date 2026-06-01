@@ -54,6 +54,22 @@ export const userService = {
     });
   },
 
+  async deleteUser(id: string, actorRole: Role, actorId: string) {
+    if (actorRole !== "SUPER_ADMIN") throw new ForbiddenError("Super-admin access required");
+
+    const existing = await userRepository.findById(id);
+    if (!existing) throw new NotFoundError("User not found");
+
+    if (existing.isActive) throw new ConflictError("Deactivate the user before deleting");
+
+    if (id === actorId) throw new ForbiddenError("Cannot delete your own account");
+
+    const hasData = await userRepository.hasAssociatedData(id);
+    if (hasData) throw new ConflictError("Cannot delete a user with associated tickets or records");
+
+    await userRepository.delete(id);
+  },
+
   async updateUser(id: string, actorRole: Role, body: unknown) {
     if (actorRole !== "SUPER_ADMIN") throw new ForbiddenError("Super-admin access required");
 

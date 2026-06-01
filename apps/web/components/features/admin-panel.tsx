@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, QrCode } from "lucide-react";
+import { Plus, QrCode, Trash2 } from "lucide-react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -244,6 +244,7 @@ function UsersTab() {
   const [formError, setFormError] = useState<string | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [editingUser, setEditingUser] = useState<UserRow | null>(null);
+  const [userView, setUserView] = useState<"active" | "deactivated">("active");
 
   const { data: users, isLoading } = useQuery({
     queryKey: ["admin-users"],
@@ -267,6 +268,11 @@ function UsersTab() {
   const toggleActive = useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
       fetchApi(`/api/users/${id}`, { method: "PATCH", body: JSON.stringify({ isActive }) }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["admin-users"] }),
+  });
+
+  const deleteUser = useMutation({
+    mutationFn: (id: string) => fetchApi(`/api/users/${id}`, { method: "DELETE" }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["admin-users"] }),
   });
 
@@ -294,24 +300,54 @@ function UsersTab() {
     createUser.mutate(payload);
   }
 
+  const activeUsers = users?.filter((u) => u.isActive) ?? [];
+  const deactivatedUsers = users?.filter((u) => !u.isActive) ?? [];
+  const visibleUsers = userView === "active" ? activeUsers : deactivatedUsers;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400">
-          {users ? `${users.length} users` : "Users"}
-        </h2>
-        <Button
-          size="sm"
-          onClick={() => {
-            setShowForm((s) => !s);
-            reset({ role: "TECHNICIAN" });
-            setFormError(null);
-            setSelectedCategories([]);
-          }}
-        >
-          <Plus className="h-4 w-4" />
-          Add user
-        </Button>
+        <div className="flex items-center gap-3">
+          <h2 className="text-sm font-medium text-gray-500 dark:text-gray-400">
+            {users ? `${visibleUsers.length} users` : "Users"}
+          </h2>
+          <div className="flex gap-1 rounded-md border bg-gray-50 p-0.5 dark:bg-gray-800">
+            <button
+              onClick={() => setUserView("active")}
+              className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
+                userView === "active"
+                  ? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100"
+                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              }`}
+            >
+              Active{users ? ` (${activeUsers.length})` : ""}
+            </button>
+            <button
+              onClick={() => { setUserView("deactivated"); setShowForm(false); }}
+              className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
+                userView === "deactivated"
+                  ? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-gray-100"
+                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              }`}
+            >
+              Deactivated{users ? ` (${deactivatedUsers.length})` : ""}
+            </button>
+          </div>
+        </div>
+        {userView === "active" && (
+          <Button
+            size="sm"
+            onClick={() => {
+              setShowForm((s) => !s);
+              reset({ role: "TECHNICIAN" });
+              setFormError(null);
+              setSelectedCategories([]);
+            }}
+          >
+            <Plus className="h-4 w-4" />
+            Add user
+          </Button>
+        )}
       </div>
 
       {showForm && (
@@ -436,16 +472,22 @@ function UsersTab() {
                 <th className="px-4 py-3 text-left">Email</th>
                 <th className="px-4 py-3 text-left">Role</th>
                 <th className="px-4 py-3 text-left">Categories</th>
-                <th className="px-4 py-3 text-left">Status</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y">
-              {users.map((u) => (
+              {visibleUsers.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
+                    {userView === "active" ? "No active users." : "No deactivated users."}
+                  </td>
+                </tr>
+              )}
+              {visibleUsers.map((u) => (
                 <tr
                   key={u.id}
-                  className="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
-                  onClick={() => setEditingUser(u)}
+                  className={`${userView === "active" ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800" : "opacity-60"}`}
+                  onClick={() => userView === "active" && setEditingUser(u)}
                 >
                   <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{u.name}</td>
                   <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{u.email}</td>
@@ -455,13 +497,8 @@ function UsersTab() {
                   <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
                     {u.categories.length > 0 ? u.categories.join(", ") : <span className="text-gray-300 dark:text-gray-600">—</span>}
                   </td>
-                  <td className="px-4 py-3">
-                    <Badge variant={u.isActive ? "success" : "secondary"}>
-                      {u.isActive ? "Active" : "Disabled"}
-                    </Badge>
-                  </td>
                   <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                    {u.isActive ? (
+                    {userView === "active" ? (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -475,14 +512,29 @@ function UsersTab() {
                         Deactivate
                       </Button>
                     ) : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
-                        onClick={() => toggleActive.mutate({ id: u.id, isActive: true })}
-                      >
-                        Reactivate
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300"
+                          onClick={() => toggleActive.mutate({ id: u.id, isActive: true })}
+                        >
+                          Reactivate
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          disabled={deleteUser.isPending}
+                          onClick={() => {
+                            if (confirm(`Permanently delete ${u.name ?? u.email}? This cannot be undone. Users with associated tickets or records cannot be deleted.`)) {
+                              deleteUser.mutate(u.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     )}
                   </td>
                 </tr>
