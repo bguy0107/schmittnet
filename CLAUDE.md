@@ -72,9 +72,10 @@ Deploy is automatic on push to `main` (GitHub Actions → SSH → `docker compos
 - **Media uploads** go via short-lived presigned PUT URLs straight to MinIO (ADR-008) — never
   buffer large files through the app process. Validate MIME/size when issuing the URL and
   verify the object afterward.
-- **Notifications fire only on:** ticket Opened (→ technicians), Awaiting Approval (→ owner/
-  owner staff), Resolved (→ owner/owner staff), and approval approved/declined (→ requesting
-  technician). **No** notifications on In Progress or On Hold. Dispatch is async via BullMQ.
+- **Notifications fire only on:** ticket Opened (→ technicians), Claimed/Started — OPEN→IN_PROGRESS
+  only (→ department channel + role), Awaiting Approval (→ owner/owner staff), Resolved (→ owner/
+  owner staff), and approval approved/declined (→ requesting technician). **No** notification when
+  resuming from On Hold. Dispatch is async via BullMQ.
 - Never log PII, passwords, tokens, or full file paths.
 
 ## Ticket lifecycle

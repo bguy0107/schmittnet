@@ -5,6 +5,7 @@ import type { Category } from "@schmittnet/types";
 
 export type NotificationJobData =
   | { type: "TICKET_OPENED"; ticketId: string; locationId: string; category: Category }
+  | { type: "TICKET_CLAIMED"; ticketId: string; category: Category }
   | { type: "AWAITING_APPROVAL"; ticketId: string; locationId: string }
   | { type: "RESOLVED"; ticketId: string; locationId: string }
   | { type: "APPROVAL_DECISION"; ticketId: string; recipientId: string; decision: "APPROVED" | "DECLINED" };
@@ -26,6 +27,17 @@ export const notificationService = {
       .add("ticket-opened", { type: "TICKET_OPENED", ticketId, locationId, category })
       .catch((err: unknown) =>
         logger.error("Failed to enqueue TICKET_OPENED notification", {
+          ticket_id: ticketId,
+          error: String(err),
+        }),
+      );
+  },
+
+  async enqueueTicketClaimed(ticketId: string, category: Category) {
+    await getQueue()
+      .add("ticket-claimed", { type: "TICKET_CLAIMED", ticketId, category })
+      .catch((err: unknown) =>
+        logger.error("Failed to enqueue TICKET_CLAIMED notification", {
           ticket_id: ticketId,
           error: String(err),
         }),

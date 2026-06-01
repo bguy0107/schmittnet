@@ -224,6 +224,36 @@ async function processJob(
     await notifyUsers(staff, subject, body, dEmbed, emailTransport);
   }
 
+  if (data.type === "TICKET_CLAIMED") {
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: data.ticketId },
+      select: {
+        id: true,
+        priority: true,
+        category: true,
+        location: { select: { name: true } },
+        assignee: { select: { name: true } },
+      },
+    });
+    if (!ticket) return;
+
+    const ref = data.ticketId.slice(0, 8).toUpperCase();
+    const label = ticket.category === "IT" ? "💻 IT" : "🔧 Maintenance";
+    const dEmbed = makeEmbed({
+      title: `${label} Ticket In Progress`,
+      url: ticketUrl(ticket.id),
+      color: PRIORITY_COLOR[ticket.priority] ?? (PRIORITY_COLOR.NORMAL as number),
+      fields: [
+        { name: "Location", value: ticket.location.name, inline: true },
+        { name: "Assigned To", value: ticket.assignee?.name ?? "Unknown", inline: true },
+        { name: "Priority", value: ticket.priority, inline: true },
+        { name: "Reference", value: `#${ref}`, inline: true },
+      ],
+    });
+
+    await notifyDepartmentAndWatchers(data.ticketId, data.category, dEmbed);
+  }
+
   if (data.type === "APPROVAL_DECISION") {
     const recipient = await prisma.user.findUnique({
       where: { id: data.recipientId },

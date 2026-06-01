@@ -229,6 +229,9 @@ export const ticketService = {
       actor_id: actorId,
     });
 
+    if (data.status === "IN_PROGRESS" && current.status === "OPEN") {
+      await notificationService.enqueueTicketClaimed(ticketId, ticket.category);
+    }
     if (data.status === "AWAITING_APPROVAL") {
       await notificationService.enqueueAwaitingApproval(ticketId, ticket.locationId);
     }
