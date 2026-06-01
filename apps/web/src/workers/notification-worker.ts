@@ -165,11 +165,11 @@ async function processJob(
     const dEmbed = makeEmbed({
       title: `${label} Ticket Opened`,
       url: ticketUrl(ticket.id),
-      description: truncate(ticket.description),
       color: 0x5865f2,
       fields: [
-        { name: "Location", value: ticket.location.name, inline: true },
-        { name: "Reference", value: `#${ref}`, inline: true },
+        { name: "Location", value: ticket.location.name },
+        { name: "Issue", value: truncate(ticket.description) },
+        { name: "Reference", value: `#${ref}` },
       ],
     });
 
@@ -180,15 +180,18 @@ async function processJob(
   }
 
   if (data.type === "AWAITING_APPROVAL" || data.type === "RESOLVED") {
-    const location = await prisma.location.findFirst({
-      where: { tickets: { some: { id: data.ticketId } } },
-      select: { ownerId: true, name: true },
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: data.ticketId },
+      select: {
+        description: true,
+        location: { select: { ownerId: true, name: true } },
+      },
     });
-    if (!location) return;
+    if (!ticket) return;
 
     const staff = await prisma.user.findMany({
       where: {
-        ownerId: location.ownerId,
+        ownerId: ticket.location.ownerId,
         role: { in: ["OWNER", "OWNER_STAFF"] },
         isActive: true,
       },
@@ -198,18 +201,19 @@ async function processJob(
     const ref = data.ticketId.slice(0, 8).toUpperCase();
     const isApproval = data.type === "AWAITING_APPROVAL";
     const subject = isApproval
-      ? `[SchmittNet] Approval Required — ${location.name}`
-      : `[SchmittNet] Ticket Resolved — ${location.name}`;
+      ? `[SchmittNet] Approval Required — ${ticket.location.name}`
+      : `[SchmittNet] Ticket Resolved — ${ticket.location.name}`;
     const body = isApproval
-      ? `Ticket #${ref} at ${location.name} is awaiting budget approval.`
-      : `Ticket #${ref} at ${location.name} has been resolved.`;
+      ? `Ticket #${ref} at ${ticket.location.name} is awaiting budget approval.`
+      : `Ticket #${ref} at ${ticket.location.name} has been resolved.`;
     const dEmbed = makeEmbed({
       title: isApproval ? `💰 Approval Required` : `✅ Ticket Resolved`,
       url: ticketUrl(data.ticketId),
       color: isApproval ? 0xffa500 : 0x57f287,
       fields: [
-        { name: "Location", value: location.name, inline: true },
-        { name: "Reference", value: `#${ref}`, inline: true },
+        { name: "Location", value: ticket.location.name },
+        { name: "Issue", value: truncate(ticket.description) },
+        { name: "Reference", value: `#${ref}` },
       ],
     });
 
@@ -221,6 +225,7 @@ async function processJob(
       where: { id: data.ticketId },
       select: {
         id: true,
+        description: true,
         category: true,
         location: { select: { name: true } },
         assignee: { select: { name: true } },
@@ -235,9 +240,10 @@ async function processJob(
       url: ticketUrl(ticket.id),
       color: 0x5865f2,
       fields: [
-        { name: "Location", value: ticket.location.name, inline: true },
-        { name: "Assigned To", value: ticket.assignee?.name ?? "Unknown", inline: true },
-        { name: "Reference", value: `#${ref}`, inline: true },
+        { name: "Location", value: ticket.location.name },
+        { name: "Issue", value: truncate(ticket.description) },
+        { name: "Assigned", value: ticket.assignee?.name ?? "Unknown" },
+        { name: "Reference", value: `#${ref}` },
       ],
     });
 
@@ -276,8 +282,8 @@ async function processJob(
       url: ticketUrl(data.ticketId),
       color: approved ? 0x57f287 : 0xed4245,
       fields: [
-        { name: "Reference", value: `#${ref}`, inline: true },
-        { name: "Decision", value: approved ? "Approved" : "Declined", inline: true },
+        { name: "Reference", value: `#${ref}` },
+        { name: "Decision", value: approved ? "Approved" : "Declined" },
       ],
     });
 
