@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { hash } from "@node-rs/argon2";
 import { userRepository } from "@/src/repositories/user-repository";
+import { notificationService } from "@/src/services/notification-service";
 import { ForbiddenError, NotFoundError, ConflictError } from "@/src/lib/errors";
 import type { Role } from "@schmittnet/types";
 
@@ -42,7 +43,7 @@ export const userService = {
 
     const passwordHash = await hash(data.password);
 
-    return userRepository.create({
+    const user = await userRepository.create({
       email: data.email,
       name: data.name,
       role: data.role as Role,
@@ -52,6 +53,10 @@ export const userService = {
       notificationDiscord: data.notificationDiscord,
       notificationEmail: data.notificationEmail,
     });
+
+    await notificationService.enqueueUserWelcome(data.email, data.name);
+
+    return user;
   },
 
   async deleteUser(id: string, actorRole: Role, actorId: string) {

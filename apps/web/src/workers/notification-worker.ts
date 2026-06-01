@@ -254,6 +254,19 @@ async function processJob(
     await notifyDepartmentAndWatchers(data.ticketId, data.category, dEmbed);
   }
 
+  if (data.type === "USER_WELCOME") {
+    const appUrl = env.APP_URL ?? "https://schmittnet.app";
+    const subject = "[SchmittNet] Welcome to SchmittNet";
+    const text =
+      `Hi ${data.recipientName},\n\n` +
+      `Your SchmittNet account has been created. You can log in at:\n\n` +
+      `  ${appUrl}\n\n` +
+      `If you have any questions, contact your administrator.\n\n` +
+      `— SchmittNet`;
+    await sendEmail(emailTransport, data.recipientEmail, subject, text);
+    return;
+  }
+
   if (data.type === "APPROVAL_DECISION") {
     const recipient = await prisma.user.findUnique({
       where: { id: data.recipientId },
