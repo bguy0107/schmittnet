@@ -67,6 +67,35 @@ function statusVariant(status: TicketStatus) {
 
 const TERMINAL = new Set<TicketStatus>(["RESOLVED", "CANCELLED"]);
 
+function ResolveForm({ value, onChange, onSubmit, onCancel, isPending }: {
+  value: string;
+  onChange: (v: string) => void;
+  onSubmit: () => void;
+  onCancel: () => void;
+  isPending: boolean;
+}) {
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Resolution note (optional)</p>
+      <Textarea
+        placeholder="Describe what was done to resolve this ticket…"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={3}
+        autoFocus
+      />
+      <div className="flex gap-2">
+        <Button size="sm" onClick={onSubmit} disabled={isPending}>
+          Confirm Resolved
+        </Button>
+        <Button variant="outline" size="sm" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 interface Props {
   ticketId: string;
   userId: string;
@@ -91,6 +120,8 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
   const [approvalReason, setApprovalReason] = useState("");
   const [approvalAction, setApprovalAction] = useState<"APPROVE" | "DECLINE" | null>(null);
   const [approvalNotes, setApprovalNotes] = useState("");
+  const [showResolveForm, setShowResolveForm] = useState(false);
+  const [resolveNote, setResolveNote] = useState("");
   const [showWatchForm, setShowWatchForm] = useState(false);
   const [watchWebhook, setWatchWebhook] = useState("");
 
@@ -148,6 +179,19 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
   function handleAddNote() {
     if (!noteContent.trim()) return;
     addNote.mutate(noteContent, { onSuccess: () => setNoteContent("") });
+  }
+
+  function handleResolveSubmit() {
+    const note = resolveNote.trim();
+    const resolve = () => updateStatus.mutate(
+      { status: "RESOLVED" },
+      { onSuccess: () => { setShowResolveForm(false); setResolveNote(""); } },
+    );
+    if (note) {
+      addNote.mutate(note, { onSuccess: resolve });
+    } else {
+      resolve();
+    }
   }
 
   return (
@@ -281,7 +325,7 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
 
             {t.status === "IN_PROGRESS" && isTech && (
               <>
-                {!showOnHoldForm && !showApprovalForm ? (
+                {!showOnHoldForm && !showApprovalForm && !showResolveForm ? (
                   <div className="flex flex-wrap gap-2">
                     <Button variant="outline" size="sm" onClick={() => setShowOnHoldForm(true)}>
                       Put On Hold
@@ -293,11 +337,7 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
                     >
                       Request Approval
                     </Button>
-                    <Button
-                      size="sm"
-                      onClick={() => updateStatus.mutate({ status: "RESOLVED" })}
-                      disabled={updateStatus.isPending}
-                    >
+                    <Button size="sm" onClick={() => setShowResolveForm(true)}>
                       Mark Resolved
                     </Button>
                   </div>
@@ -326,7 +366,7 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
                       </Button>
                     </div>
                   </div>
-                ) : (
+                ) : showApprovalForm ? (
                   <div className="space-y-2">
                     <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
                       What needs to be approved?
@@ -360,6 +400,14 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
                       </Button>
                     </div>
                   </div>
+                ) : (
+                  <ResolveForm
+                    value={resolveNote}
+                    onChange={setResolveNote}
+                    onSubmit={handleResolveSubmit}
+                    onCancel={() => { setShowResolveForm(false); setResolveNote(""); }}
+                    isPending={addNote.isPending || updateStatus.isPending}
+                  />
                 )}
               </>
             )}
@@ -376,13 +424,19 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
             )}
 
             {t.status === "APPROVED" && isTech && (
-              <Button
-                className="w-full"
-                onClick={() => updateStatus.mutate({ status: "RESOLVED" })}
-                disabled={updateStatus.isPending}
-              >
-                Mark Resolved
-              </Button>
+              !showResolveForm ? (
+                <Button className="w-full" onClick={() => setShowResolveForm(true)}>
+                  Mark Resolved
+                </Button>
+              ) : (
+                <ResolveForm
+                  value={resolveNote}
+                  onChange={setResolveNote}
+                  onSubmit={handleResolveSubmit}
+                  onCancel={() => { setShowResolveForm(false); setResolveNote(""); }}
+                  isPending={addNote.isPending || updateStatus.isPending}
+                />
+              )
             )}
 
             {t.status === "AWAITING_APPROVAL" && isOwner && pendingApproval && (
