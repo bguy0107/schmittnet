@@ -296,16 +296,10 @@ export const ticketService = {
       })
       .parse(body);
 
-    const result = await ticketRepository.resolveApproval(approvalId, actorId, status, notes);
+    const result = await ticketRepository.resolveApproval(approvalId, actorId, ticketId, status, notes);
 
     if (status === "APPROVED") {
-      await ticketRepository.updateStatus(ticketId, "APPROVED");
-      await ticketRepository.addStatusChange(ticketId, actorId, "AWAITING_APPROVAL", "APPROVED");
       await notificationService.enqueueResolved(ticketId, result.ticket.locationId);
-    } else {
-      // DECLINED → return ticket to IN_PROGRESS
-      await ticketRepository.updateStatus(ticketId, "IN_PROGRESS");
-      await ticketRepository.addStatusChange(ticketId, actorId, "AWAITING_APPROVAL", "IN_PROGRESS");
     }
 
     logger.info("Approval resolved", {

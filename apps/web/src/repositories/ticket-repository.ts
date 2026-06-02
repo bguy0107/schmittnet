@@ -258,18 +258,41 @@ export const ticketRepository = {
   async resolveApproval(
     approvalId: string,
     approverId: string,
+    ticketId: string,
     status: "APPROVED" | "DECLINED",
     notes?: string,
   ) {
-    return prisma.ticketApproval.update({
-      where: { id: approvalId },
-      data: { approverId, status, notes, resolvedAt: new Date() },
-      select: {
-        id: true,
-        status: true,
-        ticket: { select: { id: true, locationId: true, assignedTo: true } },
-        requester: { select: { id: true, name: true } },
-      },
+    const newTicketStatus = status === "APPROVED" ? "APPROVED" : "IN_PROGRESS";
+    return prisma.$transaction(async (tx) => {
+      const approval = await tx.ticketApproval.update({
+        where: { id: approvalId },
+        data: { approverId, status, notes, resolvedAt: new Date() },
+        select: {
+          id: true,
+          status: true,
+          ticket: { select: { id: true, locationId: true, assignedTo: true } },
+          requester: { select: { id: true, name: true } },
+        },
+      });
+      await tx.ticket.update({
+        where: { id: ticketId },
+        data: { status: newTicketStatus, updatedAt: new Date() },
+      });
+      await tx.ticketHistory.create({
+        data: {
+          ticketId,
+          authorId: approverId,
+          type: "STATUS_CHANGE",
+          fromStatus: "AWAITING_APPROVAL",
+          toStatus: newTicketStatus,
+        },
+      });
+      if (notes) {
+        await tx.ticketHistory.create({
+          data: { ticketId, authorId: approverId, type: "NOTE", content: notes },
+        });
+      }
+      return approval;
     });
   },
 
