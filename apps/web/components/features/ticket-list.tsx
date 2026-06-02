@@ -159,19 +159,17 @@ export function TicketList({ role }: TicketListProps) {
                       {ticket.priority === "P0" && (
                         <span className="text-base" aria-label="Service-impacting">🚨</span>
                       )}
-                      <span className="font-mono text-xs text-gray-400 dark:text-gray-500">
-                        #{ticket.id.slice(0, 8).toUpperCase()}
-                      </span>
                       <Badge variant={statusVariant(ticket.status)}>
                         {statusLabel(ticket.status)}
                       </Badge>
+                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {ticket.location.name}
+                      </span>
                       <Badge variant="outline">{ticket.category}</Badge>
                     </div>
                     <p className="line-clamp-2 text-sm text-gray-700 dark:text-gray-200">{ticket.description}</p>
                     <p className="text-xs text-gray-400 dark:text-gray-500">
-                      {ticket.location.name}
-                      {ticket.assignee ? ` · ${ticket.assignee.name}` : ""}
-                      {" · "}
+                      {ticket.assignee ? `${ticket.assignee.name} · ` : ""}
                       {formatDateTime(ticket.createdAt)}
                     </p>
                   </div>
