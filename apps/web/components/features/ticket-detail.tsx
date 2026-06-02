@@ -182,16 +182,10 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
   }
 
   function handleResolveSubmit() {
-    const note = resolveNote.trim();
-    const resolve = () => updateStatus.mutate(
-      { status: "RESOLVED" },
+    updateStatus.mutate(
+      { status: "RESOLVED", note: resolveNote.trim() || undefined },
       { onSuccess: () => { setShowResolveForm(false); setResolveNote(""); } },
     );
-    if (note) {
-      addNote.mutate(note, { onSuccess: resolve });
-    } else {
-      resolve();
-    }
   }
 
   return (
@@ -406,7 +400,7 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
                     onChange={setResolveNote}
                     onSubmit={handleResolveSubmit}
                     onCancel={() => { setShowResolveForm(false); setResolveNote(""); }}
-                    isPending={addNote.isPending || updateStatus.isPending}
+                    isPending={updateStatus.isPending}
                   />
                 )}
               </>
@@ -434,7 +428,7 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
                   onChange={setResolveNote}
                   onSubmit={handleResolveSubmit}
                   onCancel={() => { setShowResolveForm(false); setResolveNote(""); }}
-                  isPending={addNote.isPending || updateStatus.isPending}
+                  isPending={updateStatus.isPending}
                 />
               )
             )}

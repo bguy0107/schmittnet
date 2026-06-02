@@ -31,7 +31,7 @@ const ticketDetailSelect = {
   resolvedAt: true,
   acknowledgedAt: true,
   history: {
-    orderBy: { createdAt: "asc" as const },
+    orderBy: { seq: "asc" as const },
     select: {
       id: true,
       type: true,
@@ -189,6 +189,30 @@ export const ticketRepository = {
     });
   },
 
+  async updateStatusWithNote(
+    ticketId: string,
+    status: TicketStatus,
+    authorId: string,
+    fromStatus: string,
+    note: string,
+    extra?: { resolvedAt?: Date; onHoldReason?: string },
+  ) {
+    return prisma.$transaction(async (tx) => {
+      const ticket = await tx.ticket.update({
+        where: { id: ticketId },
+        data: { status, ...extra, updatedAt: new Date() },
+        select: { id: true, status: true, locationId: true, category: true },
+      });
+      await tx.ticketHistory.create({
+        data: { ticketId, authorId, type: "STATUS_CHANGE", fromStatus: fromStatus as never, toStatus: status as never },
+      });
+      await tx.ticketHistory.create({
+        data: { ticketId, authorId, type: "NOTE", content: note },
+      });
+      return ticket;
+    });
+  },
+
   async updateDeadline(id: string, deadline: Date | null) {
     return prisma.ticket.update({
       where: { id },
@@ -199,22 +223,18 @@ export const ticketRepository = {
 
   async cancelWithNote(ticketId: string, reason: string, fromStatus: string) {
     return prisma.$transaction(async (tx) => {
-      await tx.ticketHistory.create({
-        data: { ticketId, type: "NOTE", content: reason },
-      });
-      await tx.ticketHistory.create({
-        data: {
-          ticketId,
-          type: "STATUS_CHANGE",
-          fromStatus: fromStatus as never,
-          toStatus: "CANCELLED",
-        },
-      });
-      return tx.ticket.update({
+      const ticket = await tx.ticket.update({
         where: { id: ticketId },
         data: { status: "CANCELLED", updatedAt: new Date() },
         select: { id: true, status: true },
       });
+      await tx.ticketHistory.create({
+        data: { ticketId, type: "STATUS_CHANGE", fromStatus: fromStatus as never, toStatus: "CANCELLED" },
+      });
+      await tx.ticketHistory.create({
+        data: { ticketId, type: "NOTE", content: reason },
+      });
+      return ticket;
     });
   },
 
@@ -239,19 +259,23 @@ export const ticketRepository = {
     });
   },
 
-  async createApprovalAndUpdateStatus(ticketId: string, requestedBy: string, approvalReason?: string) {
+  async createApprovalAndUpdateStatus(ticketId: string, requestedBy: string, fromStatus: string, approvalReason?: string) {
     return prisma.$transaction(async (tx) => {
       await tx.ticketApproval.create({ data: { ticketId, requestedBy, approvalReason } });
+      const ticket = await tx.ticket.update({
+        where: { id: ticketId },
+        data: { status: "AWAITING_APPROVAL", updatedAt: new Date() },
+        select: { id: true, status: true, locationId: true, category: true },
+      });
+      await tx.ticketHistory.create({
+        data: { ticketId, authorId: requestedBy, type: "STATUS_CHANGE", fromStatus: fromStatus as never, toStatus: "AWAITING_APPROVAL" },
+      });
       if (approvalReason) {
         await tx.ticketHistory.create({
           data: { ticketId, authorId: requestedBy, type: "NOTE", content: `Approval requested: ${approvalReason}` },
         });
       }
-      return tx.ticket.update({
-        where: { id: ticketId },
-        data: { status: "AWAITING_APPROVAL", updatedAt: new Date() },
-        select: { id: true, status: true, locationId: true, category: true },
-      });
+      return ticket;
     });
   },
 

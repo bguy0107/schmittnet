@@ -33,6 +33,7 @@ export const statusTransitionSchema = z.object({
   status: z.enum(["IN_PROGRESS", "ON_HOLD", "AWAITING_APPROVAL", "RESOLVED", "CANCELLED"]),
   onHoldReason: z.string().max(500).optional(),
   approvalReason: z.string().min(1).max(1000).optional(),
+  note: z.string().max(2000).optional(),
 });
 
 const ALLOWED_TRANSITIONS: Partial<Record<string, readonly string[]>> = {
@@ -205,20 +206,26 @@ export const ticketService = {
       throw new ValidationError(`Cannot transition from ${current.status} to ${data.status}`);
     }
 
+    const extra = {
+      ...(data.status === "RESOLVED" ? { resolvedAt: new Date() } : {}),
+      ...(data.status === "ON_HOLD" ? { onHoldReason: data.onHoldReason } : {}),
+    };
+    const note = data.note?.trim();
+
     let ticket: Awaited<ReturnType<typeof ticketRepository.updateStatus>>;
 
     if (data.status === "AWAITING_APPROVAL") {
       const existing = await ticketRepository.getPendingApproval(ticketId);
       if (existing) throw new ConflictError("A pending approval request already exists");
-      ticket = await ticketRepository.createApprovalAndUpdateStatus(ticketId, actorId, data.approvalReason);
+      // STATUS_CHANGE + optional NOTE written atomically inside
+      ticket = await ticketRepository.createApprovalAndUpdateStatus(ticketId, actorId, current.status, data.approvalReason);
+    } else if (note) {
+      // STATUS_CHANGE + NOTE written atomically inside; note has higher seq → displays above status change
+      ticket = await ticketRepository.updateStatusWithNote(ticketId, data.status, actorId, current.status, note, extra);
     } else {
-      ticket = await ticketRepository.updateStatus(ticketId, data.status, {
-        ...(data.status === "RESOLVED" ? { resolvedAt: new Date() } : {}),
-        ...(data.status === "ON_HOLD" ? { onHoldReason: data.onHoldReason } : {}),
-      });
+      ticket = await ticketRepository.updateStatus(ticketId, data.status, extra);
+      await ticketRepository.addStatusChange(ticketId, actorId, current.status, data.status);
     }
-
-    await ticketRepository.addStatusChange(ticketId, actorId, current.status, data.status);
 
     logger.info("Ticket status updated", {
       ticket_id: ticketId,

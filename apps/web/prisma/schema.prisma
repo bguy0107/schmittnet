@@ -205,6 +205,7 @@ model TicketHistory {
   fromStatus TicketStatus?    @map("from_status")
   toStatus   TicketStatus?    @map("to_status")
   createdAt  DateTime         @default(now()) @map("created_at")
+  seq        Int              @default(autoincrement()) @map("seq")
 
   ticket Ticket @relation(fields: [ticketId], references: [id])
   author User?  @relation(fields: [authorId], references: [id])
