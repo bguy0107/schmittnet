@@ -119,7 +119,7 @@ docker compose -f infra/docker-compose.dev.yml down -v  # stop + wipe volumes
 | Auth | Auth.js v5 (Credentials, JWT) |
 | Notifications | Discord webhooks + Gmail SMTP (via BullMQ worker) |
 | Reverse proxy | Caddy (production) |
-| Deployment | Docker Compose + GitHub Actions → SSH |
+| Deployment | Docker Compose (manual SSH) |
 
 ---
 
@@ -310,7 +310,7 @@ docker compose -f infra/docker-compose.yml exec web npx prisma migrate deploy --
 
 ### VPS (public internet)
 
-Caddy automatically provisions a TLS certificate for the domain. GitHub Actions builds the Docker image on every merge to `main`, pushes it to GitHub Container Registry, then SSHs into the VPS to deploy.
+Caddy automatically provisions a TLS certificate for the domain. Deploys are manual: SSH into the VPS, build, and restart the stack.
 
 #### Prerequisites
 
@@ -318,7 +318,6 @@ Caddy automatically provisions a TLS certificate for the domain. GitHub Actions 
 - A domain or subdomain you control (e.g. `tickets.yourcompany.com`)
 - Ports 22, 80, and 443 open in the VPS firewall
 - Docker Engine 24+ with the Compose plugin installed on the VPS
-- A GitHub repository with Actions enabled
 
 #### 1. Provision the server
 
@@ -385,38 +384,7 @@ GMAIL_USER=your-gmail@gmail.com
 GMAIL_APP_PASSWORD=your-app-password
 ```
 
-#### 5. Configure GitHub Actions secrets
-
-In your GitHub repo → **Settings → Secrets and variables → Actions**, add:
-
-| Secret | Value |
-|---|---|
-| `VPS_HOST` | VPS IP address or hostname |
-| `VPS_USER` | SSH username on the VPS |
-| `VPS_SSH_KEY` | Private SSH key — paste the full contents including `-----BEGIN` / `-----END` lines |
-
-Also ensure the repository has write permissions for GitHub Container Registry: **Settings → Actions → General → Workflow permissions → Read and write permissions**.
-
-#### 6. Build and start the stack
-
-**Option A — GitHub Actions (recommended for ongoing deploys)**
-
-The deploy workflow runs automatically after CI passes on a push to `main`. Trigger it with an empty commit if the branch is already up to date:
-
-```bash
-git commit --allow-empty -m "chore: trigger first deploy"
-git push origin main
-```
-
-GitHub Actions will:
-1. Run tests and type-checking
-2. Build the Docker image and push it to GHCR tagged with the commit SHA
-3. SSH to the VPS, pull the new image, restart containers, and run `prisma migrate deploy`
-4. Hit `/api/health` to verify the deployment succeeded
-
-Monitor progress in the **Actions** tab of your repository.
-
-**Option B — Build on the VPS directly (no GitHub Actions required)**
+#### 5. Build and start the stack
 
 SSH into the VPS and run:
 
@@ -426,9 +394,7 @@ docker compose -f infra/docker-compose.yml --env-file .env build
 docker compose -f infra/docker-compose.yml --env-file .env up -d
 ```
 
-This is identical to the local network path and requires no CI setup. Use Option A once you want automated deploys on every push to `main`.
-
-#### 7. Bootstrap the database
+#### 6. Bootstrap the database
 
 After the first successful deploy, SSH into the VPS and run:
 
@@ -448,12 +414,10 @@ docker compose -f infra/docker-compose.yml exec minio sh -c \
   'mc alias set local http://localhost:9000 "${MINIO_ROOT_USER:-$MINIO_ACCESS_KEY}" "${MINIO_ROOT_PASSWORD:-$MINIO_SECRET_KEY}" && mc mb --ignore-existing local/tickets'
 ```
 
-#### 8. Verify
+#### 7. Verify
 
 Browse to `https://tickets.yourcompany.com` — Caddy provisions the TLS certificate on first request (takes a few seconds). Sign in with `admin@schmittnet.local` / `Admin1234!`, create your real users and locations, then deactivate or change the passwords for all seeded test accounts.
 
 #### Subsequent deploys
 
-**With GitHub Actions:** push to `main` — CI handles build, push, and restart automatically.
-
-**Without GitHub Actions:** SSH into the VPS and run the same commands as the [local network update flow](#updating-local-network) (remember `--env-file .env`).
+SSH into the VPS and run the same commands as the [local network update flow](#updating-local-network) (remember `--env-file .env`).
