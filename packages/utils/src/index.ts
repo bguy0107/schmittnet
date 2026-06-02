@@ -28,6 +28,7 @@ export function statusLabel(status: TicketStatus): string {
     IN_PROGRESS: "In Progress",
     ON_HOLD: "On Hold",
     AWAITING_APPROVAL: "Awaiting Approval",
+    APPROVED: "Approved",
     RESOLVED: "Resolved",
     CANCELLED: "Cancelled",
   };

@@ -23,6 +23,7 @@ const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: "IN_PROGRESS", label: "In Progress" },
   { value: "ON_HOLD", label: "On Hold" },
   { value: "AWAITING_APPROVAL", label: "Awaiting Approval" },
+  { value: "APPROVED", label: "Approved" },
   { value: "RESOLVED", label: "Resolved" },
   { value: "CANCELLED", label: "Cancelled" },
 ];
@@ -38,6 +39,7 @@ function statusVariant(status: TicketStatus) {
     case "OPEN": return "info" as const;
     case "IN_PROGRESS": return "warning" as const;
     case "AWAITING_APPROVAL": return "destructive" as const;
+    case "APPROVED": return "success" as const;
     case "RESOLVED": return "success" as const;
     default: return "secondary" as const;
   }

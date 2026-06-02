@@ -299,8 +299,8 @@ export const ticketService = {
     const result = await ticketRepository.resolveApproval(approvalId, actorId, status, notes);
 
     if (status === "APPROVED") {
-      await ticketRepository.updateStatus(ticketId, "RESOLVED", { resolvedAt: new Date() });
-      await ticketRepository.addStatusChange(ticketId, actorId, "AWAITING_APPROVAL", "RESOLVED");
+      await ticketRepository.updateStatus(ticketId, "APPROVED");
+      await ticketRepository.addStatusChange(ticketId, actorId, "AWAITING_APPROVAL", "APPROVED");
       await notificationService.enqueueResolved(ticketId, result.ticket.locationId);
     } else {
       // DECLINED → return ticket to IN_PROGRESS

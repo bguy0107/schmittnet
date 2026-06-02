@@ -9,6 +9,7 @@ export type TicketStatus =
   | "IN_PROGRESS"
   | "ON_HOLD"
   | "AWAITING_APPROVAL"
+  | "APPROVED"
   | "RESOLVED"
   | "CANCELLED";
 

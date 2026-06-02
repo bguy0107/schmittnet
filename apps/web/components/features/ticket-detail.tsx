@@ -59,12 +59,13 @@ function statusVariant(status: TicketStatus) {
     case "OPEN": return "info" as const;
     case "IN_PROGRESS": return "warning" as const;
     case "AWAITING_APPROVAL": return "destructive" as const;
+    case "APPROVED": return "success" as const;
     case "RESOLVED": return "success" as const;
     default: return "secondary" as const;
   }
 }
 
-const TERMINAL = new Set<TicketStatus>(["RESOLVED", "CANCELLED"]);
+const TERMINAL = new Set<TicketStatus>(["APPROVED", "RESOLVED", "CANCELLED"]);
 
 interface Props {
   ticketId: string;
