@@ -1,6 +1,14 @@
-import { PrismaClient, Role, Category, TicketStatus, Priority } from "@prisma/client";
+import {
+  PrismaClient,
+  Role,
+  Category,
+  TicketStatus,
+  Priority,
+  HistoryEntryType,
+  ApprovalStatus,
+} from "@prisma/client";
 import { hash } from "@node-rs/argon2";
-import { randomBytes, createHash } from "crypto";
+import { createHash } from "crypto";
 
 const prisma = new PrismaClient();
 
@@ -101,7 +109,14 @@ async function main() {
   });
 
   // Fetch seeded entities needed for ticket relations
-  const tech = await prisma.user.findUniqueOrThrow({ where: { email: "tech@schmittnet.local" }, select: { id: true } });
+  const tech = await prisma.user.findUniqueOrThrow({
+    where: { email: "tech@schmittnet.local" },
+    select: { id: true },
+  });
+  const ownerAUser = await prisma.user.findUniqueOrThrow({
+    where: { email: "owner-a@schmittnet.local" },
+    select: { id: true },
+  });
   const locA1 = await prisma.location.findUniqueOrThrow({ where: { qrToken: deterministicToken("Location A-1 — Downtown") }, select: { id: true } });
   const locA2 = await prisma.location.findUniqueOrThrow({ where: { qrToken: deterministicToken("Location A-2 — Westside") }, select: { id: true } });
   const locA3 = await prisma.location.findUniqueOrThrow({ where: { qrToken: deterministicToken("Location A-3 — Airport") }, select: { id: true } });
@@ -199,6 +214,18 @@ async function main() {
       description: "Front door hinge squeaking. Staff reported it was already lubricated before tech arrived.",
       createdAt: daysAgo(14),
     },
+    // APPROVED: approval granted, awaiting work to be completed and ticket resolved.
+    {
+      id: "ticket-seed-09",
+      locationId: locA3.id,
+      category: Category.MAINTENANCE,
+      priority: Priority.P1,
+      status: TicketStatus.APPROVED,
+      description: "Walk-in cooler condenser unit failure. Unit is beyond repair; replacement required. Vendor quote: $6,800 including installation.",
+      assignedTo: tech.id,
+      acknowledgedAt: daysAgo(4),
+      createdAt: daysAgo(5),
+    },
   ] as const;
 
   for (const ticket of seedTickets) {
@@ -209,7 +236,9 @@ async function main() {
     });
   }
 
-  // Approval request for the AWAITING_APPROVAL ticket
+  // ── Approval records ─────────────────────────────────────────────────────────
+
+  // PENDING approval for the AWAITING_APPROVAL ticket
   await prisma.ticketApproval.upsert({
     where: { id: "approval-seed-01" },
     update: {},
@@ -217,13 +246,95 @@ async function main() {
       id: "approval-seed-01",
       ticketId: "ticket-seed-06",
       requestedBy: tech.id,
-      status: "PENDING",
+      status: ApprovalStatus.PENDING,
       notes: "Obtained two quotes; lowest is $4,200. Unit is past end-of-life — repair not viable.",
       createdAt: daysAgo(5),
     },
   });
 
-  // Seed history entries
+  // APPROVED approval for the APPROVED ticket
+  await prisma.ticketApproval.upsert({
+    where: { id: "approval-seed-02" },
+    update: {},
+    create: {
+      id: "approval-seed-02",
+      ticketId: "ticket-seed-09",
+      requestedBy: tech.id,
+      approverId: ownerAUser.id,
+      status: ApprovalStatus.APPROVED,
+      notes: "Two vendors quoted; selected lowest. Condenser is 15 years old — replacement over repair.",
+      approvalReason: "Approved. Proceed with the quoted vendor. Confirm installation date with store manager.",
+      createdAt: daysAgo(3),
+      resolvedAt: daysAgo(1),
+    },
+  });
+
+  // ── Ticket history ────────────────────────────────────────────────────────────
+  //
+  // STATUS_CHANGE entries reflect each ticket's real lifecycle transitions.
+  // NOTE entries document technician observations mid-workflow.
+
+  // ticket-seed-03: OPEN → IN_PROGRESS
+  await prisma.ticketHistory.upsert({
+    where: { id: "status-seed-01" },
+    update: {},
+    create: {
+      id: "status-seed-01",
+      ticketId: "ticket-seed-03",
+      authorId: tech.id,
+      type: HistoryEntryType.STATUS_CHANGE,
+      fromStatus: TicketStatus.OPEN,
+      toStatus: TicketStatus.IN_PROGRESS,
+      createdAt: daysAgo(0),
+    },
+  });
+
+  // ticket-seed-04: OPEN → IN_PROGRESS
+  await prisma.ticketHistory.upsert({
+    where: { id: "status-seed-02" },
+    update: {},
+    create: {
+      id: "status-seed-02",
+      ticketId: "ticket-seed-04",
+      authorId: tech.id,
+      type: HistoryEntryType.STATUS_CHANGE,
+      fromStatus: TicketStatus.OPEN,
+      toStatus: TicketStatus.IN_PROGRESS,
+      createdAt: daysAgo(1),
+    },
+  });
+
+  // ticket-seed-05: OPEN → IN_PROGRESS
+  await prisma.ticketHistory.upsert({
+    where: { id: "status-seed-03" },
+    update: {},
+    create: {
+      id: "status-seed-03",
+      ticketId: "ticket-seed-05",
+      authorId: tech.id,
+      type: HistoryEntryType.STATUS_CHANGE,
+      fromStatus: TicketStatus.OPEN,
+      toStatus: TicketStatus.IN_PROGRESS,
+      createdAt: daysAgo(4),
+    },
+  });
+
+  // ticket-seed-05: IN_PROGRESS → ON_HOLD
+  await prisma.ticketHistory.upsert({
+    where: { id: "status-seed-04" },
+    update: {},
+    create: {
+      id: "status-seed-04",
+      ticketId: "ticket-seed-05",
+      authorId: tech.id,
+      type: HistoryEntryType.STATUS_CHANGE,
+      fromStatus: TicketStatus.IN_PROGRESS,
+      toStatus: TicketStatus.ON_HOLD,
+      createdAt: daysAgo(3),
+    },
+  });
+
+  // ticket-seed-05: technician note (already in NOTE history)
   await prisma.ticketHistory.upsert({
     where: { id: "note-seed-01" },
     update: {},
@@ -231,12 +342,58 @@ async function main() {
       id: "note-seed-01",
       ticketId: "ticket-seed-05",
       authorId: tech.id,
-      type: "NOTE",
+      type: HistoryEntryType.NOTE,
       content: "Confirmed camera hardware is fine. Issue is NVR firmware bug introduced in v3.1.2. Vendor acknowledged and is issuing patch.",
       createdAt: daysAgo(3),
     },
   });
 
+  // ticket-seed-06: OPEN → IN_PROGRESS
+  await prisma.ticketHistory.upsert({
+    where: { id: "status-seed-05" },
+    update: {},
+    create: {
+      id: "status-seed-05",
+      ticketId: "ticket-seed-06",
+      authorId: tech.id,
+      type: HistoryEntryType.STATUS_CHANGE,
+      fromStatus: TicketStatus.OPEN,
+      toStatus: TicketStatus.IN_PROGRESS,
+      createdAt: daysAgo(6),
+    },
+  });
+
+  // ticket-seed-06: IN_PROGRESS → AWAITING_APPROVAL
+  await prisma.ticketHistory.upsert({
+    where: { id: "status-seed-06" },
+    update: {},
+    create: {
+      id: "status-seed-06",
+      ticketId: "ticket-seed-06",
+      authorId: tech.id,
+      type: HistoryEntryType.STATUS_CHANGE,
+      fromStatus: TicketStatus.IN_PROGRESS,
+      toStatus: TicketStatus.AWAITING_APPROVAL,
+      createdAt: daysAgo(5),
+    },
+  });
+
+  // ticket-seed-07: OPEN → IN_PROGRESS
+  await prisma.ticketHistory.upsert({
+    where: { id: "status-seed-07" },
+    update: {},
+    create: {
+      id: "status-seed-07",
+      ticketId: "ticket-seed-07",
+      authorId: tech.id,
+      type: HistoryEntryType.STATUS_CHANGE,
+      fromStatus: TicketStatus.OPEN,
+      toStatus: TicketStatus.IN_PROGRESS,
+      createdAt: daysAgo(10),
+    },
+  });
+
+  // ticket-seed-07: technician note before resolving
   await prisma.ticketHistory.upsert({
     where: { id: "note-seed-02" },
     update: {},
@@ -244,9 +401,97 @@ async function main() {
       id: "note-seed-02",
       ticketId: "ticket-seed-07",
       authorId: tech.id,
-      type: "NOTE",
+      type: HistoryEntryType.NOTE,
       content: "Replaced 8-port managed switch with spare from inventory. Network stable for 24 hours. Closing ticket.",
       createdAt: daysAgo(9),
+    },
+  });
+
+  // ticket-seed-07: IN_PROGRESS → RESOLVED
+  await prisma.ticketHistory.upsert({
+    where: { id: "status-seed-08" },
+    update: {},
+    create: {
+      id: "status-seed-08",
+      ticketId: "ticket-seed-07",
+      authorId: tech.id,
+      type: HistoryEntryType.STATUS_CHANGE,
+      fromStatus: TicketStatus.IN_PROGRESS,
+      toStatus: TicketStatus.RESOLVED,
+      createdAt: daysAgo(9),
+    },
+  });
+
+  // ticket-seed-08: OPEN → CANCELLED
+  await prisma.ticketHistory.upsert({
+    where: { id: "status-seed-09" },
+    update: {},
+    create: {
+      id: "status-seed-09",
+      ticketId: "ticket-seed-08",
+      authorId: tech.id,
+      type: HistoryEntryType.STATUS_CHANGE,
+      fromStatus: TicketStatus.OPEN,
+      toStatus: TicketStatus.CANCELLED,
+      createdAt: daysAgo(14),
+    },
+  });
+
+  // ticket-seed-09: OPEN → IN_PROGRESS
+  await prisma.ticketHistory.upsert({
+    where: { id: "status-seed-10" },
+    update: {},
+    create: {
+      id: "status-seed-10",
+      ticketId: "ticket-seed-09",
+      authorId: tech.id,
+      type: HistoryEntryType.STATUS_CHANGE,
+      fromStatus: TicketStatus.OPEN,
+      toStatus: TicketStatus.IN_PROGRESS,
+      createdAt: daysAgo(4),
+    },
+  });
+
+  // ticket-seed-09: IN_PROGRESS → AWAITING_APPROVAL
+  await prisma.ticketHistory.upsert({
+    where: { id: "status-seed-11" },
+    update: {},
+    create: {
+      id: "status-seed-11",
+      ticketId: "ticket-seed-09",
+      authorId: tech.id,
+      type: HistoryEntryType.STATUS_CHANGE,
+      fromStatus: TicketStatus.IN_PROGRESS,
+      toStatus: TicketStatus.AWAITING_APPROVAL,
+      createdAt: daysAgo(3),
+    },
+  });
+
+  // ticket-seed-09: approver note + AWAITING_APPROVAL → APPROVED (written atomically)
+  await prisma.ticketHistory.upsert({
+    where: { id: "note-seed-03" },
+    update: {},
+    create: {
+      id: "note-seed-03",
+      ticketId: "ticket-seed-09",
+      authorId: ownerAUser.id,
+      type: HistoryEntryType.NOTE,
+      content: "Approved. Proceed with the quoted vendor. Confirm installation date with store manager.",
+      createdAt: daysAgo(1),
+    },
+  });
+
+  await prisma.ticketHistory.upsert({
+    where: { id: "status-seed-12" },
+    update: {},
+    create: {
+      id: "status-seed-12",
+      ticketId: "ticket-seed-09",
+      authorId: ownerAUser.id,
+      type: HistoryEntryType.STATUS_CHANGE,
+      fromStatus: TicketStatus.AWAITING_APPROVAL,
+      toStatus: TicketStatus.APPROVED,
+      createdAt: daysAgo(1),
     },
   });
 
