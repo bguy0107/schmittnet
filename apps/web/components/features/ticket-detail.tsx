@@ -47,6 +47,7 @@ interface TicketRow {
   approvals: Array<{
     id: string;
     status: "PENDING" | "APPROVED" | "DECLINED";
+    approvalReason: string | null;
     notes: string | null;
     createdAt: string;
     requester: { id: string; name: string };
@@ -85,6 +86,8 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
   const [noteContent, setNoteContent] = useState("");
   const [onHoldReason, setOnHoldReason] = useState("");
   const [showOnHoldForm, setShowOnHoldForm] = useState(false);
+  const [showApprovalForm, setShowApprovalForm] = useState(false);
+  const [approvalReason, setApprovalReason] = useState("");
   const [approvalAction, setApprovalAction] = useState<"APPROVE" | "DECLINE" | null>(null);
   const [approvalNotes, setApprovalNotes] = useState("");
   const [showWatchForm, setShowWatchForm] = useState(false);
@@ -277,7 +280,7 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
 
             {t.status === "IN_PROGRESS" && isTech && (
               <>
-                {!showOnHoldForm ? (
+                {!showOnHoldForm && !showApprovalForm ? (
                   <div className="flex flex-wrap gap-2">
                     <Button variant="outline" size="sm" onClick={() => setShowOnHoldForm(true)}>
                       Put On Hold
@@ -285,8 +288,7 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => updateStatus.mutate({ status: "AWAITING_APPROVAL" })}
-                      disabled={updateStatus.isPending}
+                      onClick={() => setShowApprovalForm(true)}
                     >
                       Request Approval
                     </Button>
@@ -298,7 +300,7 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
                       Mark Resolved
                     </Button>
                   </div>
-                ) : (
+                ) : showOnHoldForm ? (
                   <div className="space-y-2">
                     <Textarea
                       placeholder="Reason for hold…"
@@ -318,6 +320,40 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
                         variant="outline"
                         size="sm"
                         onClick={() => { setShowOnHoldForm(false); setOnHoldReason(""); }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                      What needs to be approved?
+                    </p>
+                    <Textarea
+                      placeholder="Describe what requires owner approval…"
+                      value={approvalReason}
+                      onChange={(e) => setApprovalReason(e.target.value)}
+                      rows={3}
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          if (!approvalReason.trim()) return;
+                          updateStatus.mutate(
+                            { status: "AWAITING_APPROVAL", approvalReason },
+                            { onSuccess: () => { setShowApprovalForm(false); setApprovalReason(""); } },
+                          );
+                        }}
+                        disabled={!approvalReason.trim() || updateStatus.isPending}
+                      >
+                        Submit Request
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => { setShowApprovalForm(false); setApprovalReason(""); }}
                       >
                         Cancel
                       </Button>
@@ -345,6 +381,12 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
                   {" · "}
                   {formatDateTime(pendingApproval.createdAt)}
                 </p>
+                {pendingApproval.approvalReason && (
+                  <div className="rounded-md bg-gray-50 px-3 py-2 text-sm dark:bg-gray-800/60">
+                    <span className="font-medium text-gray-700 dark:text-gray-200">What needs approval: </span>
+                    <span className="text-gray-600 dark:text-gray-300">{pendingApproval.approvalReason}</span>
+                  </div>
+                )}
                 {!approvalAction ? (
                   <div className="flex gap-2">
                     <Button size="sm" onClick={() => setApprovalAction("APPROVE")}>Approve</Button>
@@ -386,13 +428,21 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
             )}
 
             {t.status === "AWAITING_APPROVAL" && isTech && !isOwner && pendingApproval && (
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                Waiting on owner approval — requested by{" "}
-                <strong className="text-gray-700 dark:text-gray-200">
-                  {pendingApproval.requester.name}
-                </strong>{" "}
-                on {formatDateTime(pendingApproval.createdAt)}.
-              </p>
+              <div className="space-y-2">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Waiting on owner approval — requested by{" "}
+                  <strong className="text-gray-700 dark:text-gray-200">
+                    {pendingApproval.requester.name}
+                  </strong>{" "}
+                  on {formatDateTime(pendingApproval.createdAt)}.
+                </p>
+                {pendingApproval.approvalReason && (
+                  <div className="rounded-md bg-gray-50 px-3 py-2 text-sm dark:bg-gray-800/60">
+                    <span className="font-medium text-gray-700 dark:text-gray-200">Approval for: </span>
+                    <span className="text-gray-600 dark:text-gray-300">{pendingApproval.approvalReason}</span>
+                  </div>
+                )}
+              </div>
             )}
 
             {(updateStatus.isError || claimTicket.isError) && (

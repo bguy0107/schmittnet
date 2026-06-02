@@ -43,7 +43,7 @@ export function useTicket(id: string) {
 export function useUpdateTicketStatus(ticketId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: { status: string; onHoldReason?: string }) =>
+    mutationFn: (body: { status: string; onHoldReason?: string; approvalReason?: string }) =>
       fetchApi(`/api/tickets/${ticketId}/status`, {
         method: "PATCH",
         body: JSON.stringify(body),

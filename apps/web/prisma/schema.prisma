@@ -212,14 +212,15 @@ model TicketHistory {
 }
 
 model TicketApproval {
-  id          String         @id @default(uuid())
-  ticketId    String         @map("ticket_id")
-  requestedBy String         @map("requested_by")
-  approverId  String?        @map("approver_id")
-  status      ApprovalStatus @default(PENDING)
-  notes       String?
-  createdAt   DateTime       @default(now()) @map("created_at")
-  resolvedAt  DateTime?      @map("resolved_at")
+  id             String         @id @default(uuid())
+  ticketId       String         @map("ticket_id")
+  requestedBy    String         @map("requested_by")
+  approverId     String?        @map("approver_id")
+  status         ApprovalStatus @default(PENDING)
+  approvalReason String?        @map("approval_reason")
+  notes          String?
+  createdAt      DateTime       @default(now()) @map("created_at")
+  resolvedAt     DateTime?      @map("resolved_at")
 
   ticket    Ticket @relation(fields: [ticketId], references: [id])
   requester User   @relation("RequestedBy", fields: [requestedBy], references: [id])

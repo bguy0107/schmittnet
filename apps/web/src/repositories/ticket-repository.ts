@@ -52,6 +52,7 @@ const ticketDetailSelect = {
     select: {
       id: true,
       status: true,
+      approvalReason: true,
       notes: true,
       createdAt: true,
       requester: { select: { id: true, name: true } },
@@ -231,16 +232,21 @@ export const ticketRepository = {
     });
   },
 
-  async createApproval(ticketId: string, requestedBy: string) {
+  async createApproval(ticketId: string, requestedBy: string, approvalReason?: string) {
     return prisma.ticketApproval.create({
-      data: { ticketId, requestedBy },
+      data: { ticketId, requestedBy, approvalReason },
       select: { id: true },
     });
   },
 
-  async createApprovalAndUpdateStatus(ticketId: string, requestedBy: string) {
+  async createApprovalAndUpdateStatus(ticketId: string, requestedBy: string, approvalReason?: string) {
     return prisma.$transaction(async (tx) => {
-      await tx.ticketApproval.create({ data: { ticketId, requestedBy } });
+      await tx.ticketApproval.create({ data: { ticketId, requestedBy, approvalReason } });
+      if (approvalReason) {
+        await tx.ticketHistory.create({
+          data: { ticketId, authorId: requestedBy, type: "NOTE", content: `Approval requested: ${approvalReason}` },
+        });
+      }
       return tx.ticket.update({
         where: { id: ticketId },
         data: { status: "AWAITING_APPROVAL", updatedAt: new Date() },

@@ -32,6 +32,7 @@ export const createTicketSchema = z.object({
 export const statusTransitionSchema = z.object({
   status: z.enum(["IN_PROGRESS", "ON_HOLD", "AWAITING_APPROVAL", "RESOLVED", "CANCELLED"]),
   onHoldReason: z.string().max(500).optional(),
+  approvalReason: z.string().min(1).max(1000).optional(),
 });
 
 const ALLOWED_TRANSITIONS: Partial<Record<string, readonly string[]>> = {
@@ -208,7 +209,7 @@ export const ticketService = {
     if (data.status === "AWAITING_APPROVAL") {
       const existing = await ticketRepository.getPendingApproval(ticketId);
       if (existing) throw new ConflictError("A pending approval request already exists");
-      ticket = await ticketRepository.createApprovalAndUpdateStatus(ticketId, actorId);
+      ticket = await ticketRepository.createApprovalAndUpdateStatus(ticketId, actorId, data.approvalReason);
     } else {
       ticket = await ticketRepository.updateStatus(ticketId, data.status, {
         ...(data.status === "RESOLVED" ? { resolvedAt: new Date() } : {}),
