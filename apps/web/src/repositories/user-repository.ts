@@ -40,6 +40,13 @@ export const userRepository = {
     });
   },
 
+  async findByIdWithHash(id: string) {
+    return prisma.user.findUnique({
+      where: { id },
+      select: { ...userSelect, passwordHash: true },
+    });
+  },
+
   async findTechniciansForCategory(category: Category) {
     return prisma.user.findMany({
       where: {

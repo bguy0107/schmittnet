@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { LogOut, Ticket, BarChart2, Settings } from "lucide-react";
+import { LogOut, Ticket, BarChart2, Settings, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -75,9 +75,17 @@ export function DashboardNav({ user }: DashboardNavProps) {
 
           {/* User + sign out */}
           <div className="flex items-center gap-3">
-            <span className="hidden text-sm text-gray-500 dark:text-gray-400 sm:block">
+            <Link
+              href={"/profile" as Route}
+              className="hidden text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 sm:block"
+            >
               {user.name ?? user.email}
-            </span>
+            </Link>
+            <Button variant="ghost" size="icon" asChild className="sm:hidden">
+              <Link href={"/profile" as Route} aria-label="Profile">
+                <User className="h-4 w-4" />
+              </Link>
+            </Button>
             <ThemeToggle />
             <Button
               variant="ghost"
