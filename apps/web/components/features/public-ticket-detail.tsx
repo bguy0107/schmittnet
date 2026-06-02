@@ -382,7 +382,7 @@ export function PublicTicketDetail({ token, ticketId }: Props) {
           <p className="text-sm text-gray-400">No history yet.</p>
         )}
 
-        {t.history.map((entry) =>
+        {[...t.history].reverse().map((entry) =>
           entry.type === "STATUS_CHANGE" ? (
             <div key={entry.id} className="flex items-start gap-3">
               <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-blue-400" />

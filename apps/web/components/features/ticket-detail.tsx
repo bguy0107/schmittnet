@@ -528,7 +528,7 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
           {t.history.length === 0 && (
             <p className="text-sm text-gray-400 dark:text-gray-500">No history yet.</p>
           )}
-          {t.history.map((entry) =>
+          {[...t.history].reverse().map((entry) =>
             entry.type === "STATUS_CHANGE" ? (
               <div key={entry.id} className="flex items-start gap-3">
                 <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-blue-400 dark:bg-blue-500" />
