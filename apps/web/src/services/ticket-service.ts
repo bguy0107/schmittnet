@@ -39,9 +39,10 @@ const ALLOWED_TRANSITIONS: Partial<Record<string, readonly string[]>> = {
   OPEN:               ["IN_PROGRESS", "CANCELLED"],
   IN_PROGRESS:        ["ON_HOLD", "AWAITING_APPROVAL", "RESOLVED", "CANCELLED"],
   ON_HOLD:            ["IN_PROGRESS", "CANCELLED"],
-  // AWAITING_APPROVAL exits via resolveApproval (APPROVED→RESOLVED, DECLINED→IN_PROGRESS).
+  // AWAITING_APPROVAL exits via resolveApproval (APPROVED→IN_PROGRESS or APPROVED status).
   // Technicians may only cancel it directly.
   AWAITING_APPROVAL:  ["CANCELLED"],
+  APPROVED:           ["RESOLVED"],
   RESOLVED:           [],
   CANCELLED:          [],
 };

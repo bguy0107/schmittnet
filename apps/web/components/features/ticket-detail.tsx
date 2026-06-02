@@ -65,7 +65,7 @@ function statusVariant(status: TicketStatus) {
   }
 }
 
-const TERMINAL = new Set<TicketStatus>(["APPROVED", "RESOLVED", "CANCELLED"]);
+const TERMINAL = new Set<TicketStatus>(["RESOLVED", "CANCELLED"]);
 
 interface Props {
   ticketId: string;
@@ -372,6 +372,16 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
                 disabled={updateStatus.isPending}
               >
                 Resume Work
+              </Button>
+            )}
+
+            {t.status === "APPROVED" && isTech && (
+              <Button
+                className="w-full"
+                onClick={() => updateStatus.mutate({ status: "RESOLVED" })}
+                disabled={updateStatus.isPending}
+              >
+                Mark Resolved
               </Button>
             )}
 
