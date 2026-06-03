@@ -122,7 +122,7 @@ model User {
   image               String?
   role                Role
   categories          Category[]
-  notificationEmail   Boolean    @default(true) @map("notification_email")
+  notificationEmail   Boolean    @default(false) @map("notification_email")
   ownerId             String?    @map("owner_id")
   passwordHash        String     @map("password_hash")
   isActive            Boolean    @default(true) @map("is_active")

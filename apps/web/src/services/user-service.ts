@@ -12,7 +12,7 @@ const createUserSchema = z.object({
   categories: z.array(z.enum(["IT", "MAINTENANCE"])).optional(),
   ownerId: z.string().uuid().optional(),
   password: z.string().min(8),
-  notificationEmail: z.boolean().default(true),
+  notificationEmail: z.boolean().default(false),
 });
 
 const updateUserSchema = z.object({
