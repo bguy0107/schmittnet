@@ -8,7 +8,6 @@ const userSelect = {
   name: true,
   role: true,
   categories: true,
-  notificationDiscord: true,
   notificationEmail: true,
   ownerId: true,
   isActive: true,
@@ -58,7 +57,6 @@ export const userRepository = {
         id: true,
         name: true,
         email: true,
-        notificationDiscord: true,
         notificationEmail: true,
       },
     });
@@ -75,7 +73,6 @@ export const userRepository = {
         id: true,
         name: true,
         email: true,
-        notificationDiscord: true,
         notificationEmail: true,
       },
     });
@@ -88,7 +85,6 @@ export const userRepository = {
     categories?: Category[];
     ownerId?: string;
     passwordHash: string;
-    notificationDiscord?: string;
     notificationEmail?: boolean;
   }) {
     return prisma.user.create({
@@ -104,7 +100,6 @@ export const userRepository = {
       role: Role;
       categories: Category[];
       ownerId: string | null;
-      notificationDiscord: string | null;
       notificationEmail: boolean;
       isActive: boolean;
       passwordHash: string;

@@ -131,7 +131,7 @@ export function useTicketWatchStatus(ticketId: string) {
   return useQuery({
     queryKey: ["ticket-watch", ticketId],
     queryFn: () =>
-      fetchApi<{ isWatching: boolean; webhookUrl: string | null }>(
+      fetchApi<{ isWatching: boolean }>(
         `/api/tickets/${ticketId}/watch`,
       ),
     enabled: !!ticketId,
@@ -141,11 +141,8 @@ export function useTicketWatchStatus(ticketId: string) {
 export function useWatchTicket(ticketId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (webhookUrl: string) =>
-      fetchApi(`/api/tickets/${ticketId}/watch`, {
-        method: "POST",
-        body: JSON.stringify({ webhookUrl }),
-      }),
+    mutationFn: () =>
+      fetchApi(`/api/tickets/${ticketId}/watch`, { method: "POST" }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["ticket-watch", ticketId] }),
   });
 }

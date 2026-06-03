@@ -25,14 +25,13 @@ export async function GET(_req: NextRequest, { params }: Params) {
   }
 }
 
-export async function POST(req: NextRequest, { params }: Params) {
+export async function POST(_req: NextRequest, { params }: Params) {
   const session = await auth();
   if (!session?.user) {
     return NextResponse.json(toApiError(new UnauthorizedError()), { status: 401 });
   }
 
   const { id } = await params;
-  const body: unknown = await req.json();
 
   try {
     await watchService.watch(
@@ -40,7 +39,6 @@ export async function POST(req: NextRequest, { params }: Params) {
       session.user.id,
       session.user.role,
       session.user.ownerId,
-      body,
     );
     return NextResponse.json({ isWatching: true });
   } catch (error) {

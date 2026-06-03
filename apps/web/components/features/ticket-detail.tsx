@@ -122,8 +122,6 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
   const [approvalNotes, setApprovalNotes] = useState("");
   const [showResolveForm, setShowResolveForm] = useState(false);
   const [resolveNote, setResolveNote] = useState("");
-  const [showWatchForm, setShowWatchForm] = useState(false);
-  const [watchWebhook, setWatchWebhook] = useState("");
 
   if (isLoading) {
     return <div className="py-16 text-center text-sm text-gray-500 dark:text-gray-400">Loading…</div>;
@@ -523,7 +521,7 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
           {watchStatus?.isWatching ? (
             <div className="space-y-2">
               <p className="text-xs text-gray-500 dark:text-gray-400">
-                You are watching this ticket. Notifications go to your Discord webhook.
+                You are watching this ticket.
               </p>
               <Button
                 variant="outline"
@@ -534,42 +532,14 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
                 {unwatchTicket.isPending ? "Removing…" : "Unwatch"}
               </Button>
             </div>
-          ) : showWatchForm ? (
-            <div className="space-y-2">
-              <input
-                type="url"
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring dark:bg-gray-900"
-                placeholder="https://discord.com/api/webhooks/…"
-                value={watchWebhook}
-                onChange={(e) => setWatchWebhook(e.target.value)}
-              />
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  disabled={!watchWebhook.trim() || watchTicket.isPending}
-                  onClick={() =>
-                    watchTicket.mutate(watchWebhook, {
-                      onSuccess: () => { setShowWatchForm(false); setWatchWebhook(""); },
-                    })
-                  }
-                >
-                  {watchTicket.isPending ? "Saving…" : "Confirm"}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => { setShowWatchForm(false); setWatchWebhook(""); }}
-                >
-                  Cancel
-                </Button>
-              </div>
-              {watchTicket.isError && (
-                <p className="text-xs text-destructive">Invalid webhook URL — please try again.</p>
-              )}
-            </div>
           ) : (
-            <Button variant="outline" size="sm" onClick={() => setShowWatchForm(true)}>
-              Watch
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => watchTicket.mutate()}
+              disabled={watchTicket.isPending}
+            >
+              {watchTicket.isPending ? "Saving…" : "Watch"}
             </Button>
           )}
         </CardContent>

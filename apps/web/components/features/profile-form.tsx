@@ -23,16 +23,12 @@ const ROLE_LABELS: Record<string, string> = {
 const profileSchema = z.object({
   name: z.string().min(2, "At least 2 characters").max(100, "At most 100 characters"),
   notificationEmail: z.boolean(),
-  notificationDiscord: z.union([
-    z.string().url("Must be a valid URL"),
-    z.literal(""),
-  ]),
 });
 
 const passwordSchema = z
   .object({
     currentPassword: z.string().min(1, "Current password is required"),
-    newPassword: z.string().min(12, "Must be at least 12 characters"),
+    newPassword: z.string().min(8, "Must be at least 8 characters"),
     confirmPassword: z.string().min(1, "Please confirm your new password"),
   })
   .refine((d) => d.newPassword === d.confirmPassword, {
@@ -54,7 +50,6 @@ export function ProfileForm({ profile }: { profile: UserRow }) {
     defaultValues: {
       name: profile.name ?? "",
       notificationEmail: profile.notificationEmail,
-      notificationDiscord: profile.notificationDiscord ?? "",
     },
   });
 
@@ -71,7 +66,6 @@ export function ProfileForm({ profile }: { profile: UserRow }) {
         body: JSON.stringify({
           name: data.name,
           notificationEmail: data.notificationEmail,
-          notificationDiscord: data.notificationDiscord || null,
         }),
       });
       setProfileSuccess(true);
@@ -187,24 +181,6 @@ export function ProfileForm({ profile }: { profile: UserRow }) {
                 </Label>
               </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="notificationDiscord">Discord webhook URL</Label>
-                <Input
-                  id="notificationDiscord"
-                  type="url"
-                  placeholder="https://discord.com/api/webhooks/…"
-                  aria-invalid={!!profileForm.formState.errors.notificationDiscord}
-                  {...profileForm.register("notificationDiscord")}
-                />
-                {profileForm.formState.errors.notificationDiscord && (
-                  <p className="text-xs text-destructive">
-                    {profileForm.formState.errors.notificationDiscord.message}
-                  </p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Leave blank to disable Discord notifications.
-                </p>
-              </div>
             </div>
 
             <Button

@@ -26,7 +26,6 @@ interface UserRow {
   categories: string[];
   ownerId: string | null;
   notificationEmail: boolean;
-  notificationDiscord: string | null;
 }
 
 const editUserSchema = z.object({
@@ -34,8 +33,7 @@ const editUserSchema = z.object({
   role: z.enum(["SUPER_ADMIN", "OWNER", "OWNER_STAFF", "TECHNICIAN"]),
   ownerId: z.string().optional(),
   notificationEmail: z.boolean(),
-  notificationDiscord: z.string().url("Must be a valid URL").or(z.literal("")).optional(),
-  password: z.string().min(12, "Must be at least 12 characters").or(z.literal("")).optional(),
+  password: z.string().min(8, "Must be at least 8 characters").or(z.literal("")).optional(),
 });
 type EditUserData = z.infer<typeof editUserSchema>;
 
@@ -74,7 +72,6 @@ function EditUserPanel({
       role: user.role as EditUserData["role"],
       ownerId: user.ownerId ?? "",
       notificationEmail: user.notificationEmail,
-      notificationDiscord: user.notificationDiscord ?? "",
       password: "",
     },
   });
@@ -88,7 +85,6 @@ function EditUserPanel({
       name: data.name,
       role: data.role,
       notificationEmail: data.notificationEmail,
-      notificationDiscord: data.notificationDiscord || null,
       ownerId: showOwnerScope ? (data.ownerId || null) : null,
       categories: showCategories ? editCategories : [],
     };
@@ -182,18 +178,6 @@ function EditUserPanel({
               </select>
             </div>
           )}
-
-          <div className="space-y-1">
-            <Label htmlFor="e-discord">Discord webhook</Label>
-            <Input
-              id="e-discord"
-              placeholder="https://discord.com/api/webhooks/…"
-              {...register("notificationDiscord")}
-            />
-            {errors.notificationDiscord && (
-              <p className="text-xs text-destructive">{errors.notificationDiscord.message}</p>
-            )}
-          </div>
 
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <input

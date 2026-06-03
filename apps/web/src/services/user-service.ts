@@ -11,8 +11,7 @@ const createUserSchema = z.object({
   role: z.enum(["SUPER_ADMIN", "OWNER", "OWNER_STAFF", "TECHNICIAN"]),
   categories: z.array(z.enum(["IT", "MAINTENANCE"])).optional(),
   ownerId: z.string().uuid().optional(),
-  password: z.string().min(12),
-  notificationDiscord: z.string().url().optional(),
+  password: z.string().min(8),
   notificationEmail: z.boolean().default(true),
 });
 
@@ -22,9 +21,8 @@ const updateUserSchema = z.object({
   categories: z.array(z.enum(["IT", "MAINTENANCE"])).optional(),
   ownerId: z.string().uuid().nullable().optional(),
   isActive: z.boolean().optional(),
-  notificationDiscord: z.string().url().nullable().optional(),
   notificationEmail: z.boolean().optional(),
-  password: z.string().min(12).optional(),
+  password: z.string().min(8).optional(),
 });
 
 export const userService = {
@@ -50,7 +48,6 @@ export const userService = {
       categories: data.categories as never,
       ownerId: data.ownerId,
       passwordHash,
-      notificationDiscord: data.notificationDiscord,
       notificationEmail: data.notificationEmail,
     });
 
@@ -90,7 +87,6 @@ export const userService = {
     if (data.categories !== undefined) updates.categories = data.categories as never;
     if (data.ownerId !== undefined) updates.ownerId = data.ownerId;
     if (data.isActive !== undefined) updates.isActive = data.isActive;
-    if (data.notificationDiscord !== undefined) updates.notificationDiscord = data.notificationDiscord;
     if (data.notificationEmail !== undefined) updates.notificationEmail = data.notificationEmail;
 
     if (data.password) {

@@ -1,18 +1,13 @@
-import { z } from "zod";
 import { watcherRepository } from "@/src/repositories/watcher-repository";
 import { ticketRepository } from "@/src/repositories/ticket-repository";
 import { locationRepository } from "@/src/repositories/location-repository";
 import { NotFoundError, ForbiddenError } from "@/src/lib/errors";
 import type { Role } from "@schmittnet/types";
 
-export const watchSchema = z.object({
-  webhookUrl: z.string().url("Must be a valid URL"),
-});
-
 export const watchService = {
   async getStatus(ticketId: string, userId: string) {
     const watcher = await watcherRepository.findOne(ticketId, userId);
-    return { isWatching: !!watcher, webhookUrl: watcher?.webhookUrl ?? null };
+    return { isWatching: !!watcher };
   },
 
   async watch(
@@ -20,11 +15,9 @@ export const watchService = {
     actorId: string,
     actorRole: Role,
     actorOwnerId: string | null,
-    body: unknown,
   ) {
-    const { webhookUrl } = watchSchema.parse(body);
     await assertTicketAccess(ticketId, actorRole, actorOwnerId);
-    return watcherRepository.upsert(ticketId, actorId, webhookUrl);
+    return watcherRepository.upsert(ticketId, actorId);
   },
 
   async unwatch(ticketId: string, actorId: string) {

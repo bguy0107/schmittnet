@@ -6,12 +6,11 @@ import { UnauthorizedError, ValidationError } from "@/src/lib/errors";
 const updateProfileSchema = z.object({
   name: z.string().min(2).max(100).optional(),
   notificationEmail: z.boolean().optional(),
-  notificationDiscord: z.string().url().nullable().optional(),
 });
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1),
-  newPassword: z.string().min(12, "Password must be at least 12 characters"),
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 export const profileService = {
@@ -25,7 +24,6 @@ export const profileService = {
     const updates: Parameters<typeof userRepository.update>[1] = {};
     if (data.name !== undefined) updates.name = data.name;
     if (data.notificationEmail !== undefined) updates.notificationEmail = data.notificationEmail;
-    if (data.notificationDiscord !== undefined) updates.notificationDiscord = data.notificationDiscord;
 
     return userRepository.update(userId, updates);
   },

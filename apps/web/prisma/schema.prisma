@@ -122,7 +122,6 @@ model User {
   image               String?
   role                Role
   categories          Category[]
-  notificationDiscord String?    @map("notification_discord")
   notificationEmail   Boolean    @default(true) @map("notification_email")
   ownerId             String?    @map("owner_id")
   passwordHash        String     @map("password_hash")
@@ -235,7 +234,6 @@ model TicketWatcher {
   id         String   @id @default(uuid())
   ticketId   String   @map("ticket_id")
   userId     String   @map("user_id")
-  webhookUrl String   @map("webhook_url")
   createdAt  DateTime @default(now()) @map("created_at")
 
   ticket Ticket @relation(fields: [ticketId], references: [id])

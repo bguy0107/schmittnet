@@ -5,7 +5,6 @@ import { redis } from "@/src/lib/redis";
 import { env } from "@/src/lib/env";
 import { logger } from "@/src/lib/logger";
 import { settingRepository } from "@/src/repositories/setting-repository";
-import { watcherRepository } from "@/src/repositories/watcher-repository";
 import type { NotificationJobData } from "@/src/services/notification-service";
 import type { Category } from "@schmittnet/types";
 
@@ -77,57 +76,29 @@ async function notifyUsers(
   users: Array<{
     email: string | null;
     notificationEmail: boolean;
-    notificationDiscord: string | null;
   }>,
   subject: string,
   body: string,
-  discordEmbed: DiscordEmbed,
   emailTransport: ReturnType<typeof makeEmailTransport>,
 ) {
   await Promise.allSettled(
-    users.flatMap((u) => {
-      const jobs = [];
-      if (u.notificationEmail && u.email) {
-        jobs.push(sendEmail(emailTransport, u.email, subject, body));
-      }
-      if (u.notificationDiscord) {
-        jobs.push(sendDiscordEmbed(u.notificationDiscord, discordEmbed));
-      }
-      return jobs;
-    }),
+    users
+      .filter((u) => u.notificationEmail && u.email)
+      .map((u) => sendEmail(emailTransport, u.email!, subject, body)),
   );
 }
 
-async function notifyDepartmentAndWatchers(
-  ticketId: string,
+async function notifyDepartment(
   category: Category,
   discordEmbed: DiscordEmbed,
 ) {
-  const [departmentWebhook, roleId, watchers] = await Promise.all([
+  const [webhookUrl, roleId] = await Promise.all([
     settingRepository.getDiscordWebhook(category),
     settingRepository.getDiscordRoleId(category),
-    watcherRepository.findByTicket(ticketId),
   ]);
-
-  const seen = new Set<string>();
-  const urls: string[] = [];
-  if (departmentWebhook) {
-    seen.add(departmentWebhook);
-    urls.push(departmentWebhook);
+  if (webhookUrl) {
+    await sendDiscordEmbed(webhookUrl, discordEmbed, roleId);
   }
-  for (const w of watchers) {
-    if (!seen.has(w.webhookUrl)) {
-      seen.add(w.webhookUrl);
-      urls.push(w.webhookUrl);
-    }
-  }
-
-  // Only ping the role on the department webhook, not watcher webhooks
-  await Promise.allSettled(
-    urls.map((url) =>
-      sendDiscordEmbed(url, discordEmbed, url === departmentWebhook ? roleId : null),
-    ),
-  );
 }
 
 function truncate(text: string, max = 300): string {
@@ -153,7 +124,7 @@ async function processJob(
       }),
       prisma.user.findMany({
         where: { role: "TECHNICIAN", isActive: true, categories: { has: data.category } },
-        select: { email: true, notificationEmail: true, notificationDiscord: true },
+        select: { email: true, notificationEmail: true },
       }),
     ]);
     if (!ticket) return;
@@ -174,8 +145,8 @@ async function processJob(
     });
 
     await Promise.all([
-      notifyUsers(techs, subject, body, dEmbed, emailTransport),
-      notifyDepartmentAndWatchers(data.ticketId, data.category, dEmbed),
+      notifyUsers(techs, subject, body, emailTransport),
+      notifyDepartment(data.category, dEmbed),
     ]);
   }
 
@@ -195,7 +166,7 @@ async function processJob(
         role: { in: ["OWNER", "OWNER_STAFF"] },
         isActive: true,
       },
-      select: { email: true, notificationEmail: true, notificationDiscord: true },
+      select: { email: true, notificationEmail: true },
     });
 
     const ref = data.ticketId.slice(0, 8).toUpperCase();
@@ -217,7 +188,7 @@ async function processJob(
       ],
     });
 
-    await notifyUsers(staff, subject, body, dEmbed, emailTransport);
+    await notifyUsers(staff, subject, body, emailTransport);
   }
 
   if (data.type === "TICKET_CLAIMED") {
@@ -247,7 +218,7 @@ async function processJob(
       ],
     });
 
-    await notifyDepartmentAndWatchers(data.ticketId, data.category, dEmbed);
+    await notifyDepartment(data.category, dEmbed);
   }
 
   if (data.type === "USER_WELCOME") {
@@ -269,7 +240,7 @@ async function processJob(
   if (data.type === "APPROVAL_DECISION") {
     const recipient = await prisma.user.findUnique({
       where: { id: data.recipientId },
-      select: { email: true, notificationEmail: true, notificationDiscord: true },
+      select: { email: true, notificationEmail: true },
     });
     if (!recipient) return;
 
@@ -277,17 +248,8 @@ async function processJob(
     const approved = data.decision === "APPROVED";
     const subject = `[SchmittNet] Approval ${approved ? "Approved" : "Declined"}`;
     const body = `Your approval request for ticket #${ref} was ${data.decision.toLowerCase()}.`;
-    const dEmbed = makeEmbed({
-      title: approved ? `✅ Approval Approved` : `❌ Approval Declined`,
-      url: ticketUrl(data.ticketId),
-      color: approved ? 0x57f287 : 0xed4245,
-      fields: [
-        { name: "Reference", value: `#${ref}` },
-        { name: "Decision", value: approved ? "Approved" : "Declined" },
-      ],
-    });
 
-    await notifyUsers([recipient], subject, body, dEmbed, emailTransport);
+    await notifyUsers([recipient], subject, body, emailTransport);
   }
 }
 
