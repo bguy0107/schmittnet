@@ -135,7 +135,7 @@ export const ticketRepository = {
   async updateStatus(
     id: string,
     status: TicketStatus,
-    extra?: { resolvedAt?: Date; onHoldReason?: string; assignedTo?: string | null },
+    extra?: { resolvedAt?: Date; onHoldReason?: string | null; assignedTo?: string | null },
   ) {
     return prisma.ticket.update({
       where: { id },
@@ -195,7 +195,7 @@ export const ticketRepository = {
     authorId: string,
     fromStatus: string,
     note: string,
-    extra?: { resolvedAt?: Date; onHoldReason?: string },
+    extra?: { resolvedAt?: Date; onHoldReason?: string | null },
   ) {
     return prisma.$transaction(async (tx) => {
       const ticket = await tx.ticket.update({

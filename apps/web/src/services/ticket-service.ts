@@ -209,8 +209,10 @@ export const ticketService = {
     const extra = {
       ...(data.status === "RESOLVED" ? { resolvedAt: new Date() } : {}),
       ...(data.status === "ON_HOLD" ? { onHoldReason: data.onHoldReason } : {}),
+      ...(data.status === "IN_PROGRESS" && current.status === "ON_HOLD" ? { onHoldReason: null } : {}),
     };
-    const note = data.note?.trim();
+    // For ON_HOLD, the hold reason doubles as the history note so it's always recorded.
+    const note = data.note?.trim() || (data.status === "ON_HOLD" ? data.onHoldReason?.trim() : undefined);
 
     let ticket: Awaited<ReturnType<typeof ticketRepository.updateStatus>>;
 
