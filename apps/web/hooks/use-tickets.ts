@@ -119,6 +119,7 @@ export function useSubmitTicket(token: string) {
       description: string;
       deadline?: string;
       mediaKeys: string[];
+      reporterName: string;
     }) =>
       fetchApi<SubmitTicketResponse>(`/api/tickets/submit/${token}`, {
         method: "POST",

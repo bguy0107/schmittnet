@@ -19,6 +19,7 @@ export const submitTicketSchema = z.object({
   description: z.string().min(10).max(2000),
   deadline: z.string().datetime().optional(),
   mediaKeys: z.array(z.string().min(1)).min(1).max(5),
+  reporterName: z.string().min(1, "Name is required").max(100),
 });
 
 export const createTicketSchema = z.object({
@@ -65,6 +66,7 @@ export const ticketService = {
       description: data.description,
       priority: "NORMAL",
       deadline: data.deadline ? new Date(data.deadline) : undefined,
+      reporterName: data.reporterName,
       mediaKeys: data.mediaKeys.map((key) => ({
         storageKey: key,
         mediaType: "PHOTO" as const,

@@ -94,6 +94,7 @@ export interface SubmitTicketInput {
   description: string;
   deadline?: string;
   mediaKeys: string[];
+  reporterName: string;
 }
 
 export interface SubmitTicketResponse {

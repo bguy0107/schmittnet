@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Camera, CheckCircle2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -17,6 +18,7 @@ const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/heic", "image/webp", "
 const MAX_BYTES = 100 * 1024 * 1024; // 100 MB
 
 const schema = z.object({
+  reporterName: z.string().min(1, "Your name is required").max(100),
   category: z.enum(["IT", "MAINTENANCE"], { required_error: "Select a category" }),
   description: z.string().min(10, "Describe the issue in at least 10 characters").max(2000),
   deadline: z.string().optional(),
@@ -100,6 +102,7 @@ export function TicketSubmitForm({ token }: { token: string }) {
       description: data.description,
       deadline: data.deadline || undefined,
       mediaKeys: [mediaKey],
+      reporterName: data.reporterName,
     });
 
     setConfirmation(result);
@@ -150,6 +153,22 @@ export function TicketSubmitForm({ token }: { token: string }) {
           </AlertDescription>
         </Alert>
       )}
+
+      {/* Reporter name */}
+      <div className="space-y-1.5">
+        <Label htmlFor="reporterName">
+          Your name <span aria-hidden="true" className="text-destructive">*</span>
+        </Label>
+        <Input
+          id="reporterName"
+          placeholder="First and last name"
+          aria-invalid={!!errors.reporterName}
+          {...register("reporterName")}
+        />
+        {errors.reporterName && (
+          <p className="text-xs text-destructive">{errors.reporterName.message}</p>
+        )}
+      </div>
 
       {/* Category */}
       <div className="space-y-2">

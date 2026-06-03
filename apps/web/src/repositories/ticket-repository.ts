@@ -109,6 +109,7 @@ export const ticketRepository = {
     description: string;
     priority: Priority;
     deadline?: Date;
+    reporterName?: string;
     mediaKeys: Array<{ storageKey: string; mediaType: "PHOTO" | "VIDEO"; mimeType: string }>;
     actorId?: string | null;
   }) {
@@ -119,6 +120,7 @@ export const ticketRepository = {
         description: data.description,
         priority: data.priority,
         deadline: data.deadline,
+        reporterName: data.reporterName,
         media: { create: data.mediaKeys },
         history: {
           create: [{
