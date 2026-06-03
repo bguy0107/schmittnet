@@ -10,7 +10,7 @@ export default async function AdminPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-xl font-semibold text-gray-900">Admin</h1>
+      <h1 className="mb-6 text-xl font-semibold text-gray-900 dark:text-gray-100">Admin</h1>
       <AdminPanel />
     </div>
   );

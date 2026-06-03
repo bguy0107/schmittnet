@@ -36,17 +36,27 @@ const CATEGORY_OPTIONS: { value: string; label: string }[] = [
 
 function statusVariant(status: TicketStatus) {
   switch (status) {
-    case "OPEN": return "info" as const;
+    case "OPEN": return "destructive" as const;
     case "IN_PROGRESS": return "warning" as const;
-    case "AWAITING_APPROVAL": return "destructive" as const;
+    case "ON_HOLD": return "orange" as const;
+    case "AWAITING_APPROVAL": return "pink" as const;
     case "APPROVED": return "success" as const;
     case "RESOLVED": return "success" as const;
+    case "CANCELLED": return "success" as const;
     default: return "secondary" as const;
   }
 }
 
 function statusLabel(status: TicketStatus): string {
   return status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function categoryVariant(category: string) {
+  return category === "IT" ? "purple" as const : "silver" as const;
+}
+
+function categoryLabel(category: string) {
+  return category === "IT" ? "IT" : "Maintenance";
 }
 
 const PAGE_SIZE = 25;
@@ -155,6 +165,9 @@ export function TicketList({ role }: TicketListProps) {
                   className="flex items-start justify-between gap-3 px-4 py-4 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800"
                 >
                   <div className="min-w-0 flex-1 space-y-1">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      {ticket.location.name}
+                    </p>
                     <div className="flex flex-wrap items-center gap-2">
                       {ticket.priority === "P0" && (
                         <span className="text-base" aria-label="Service-impacting">🚨</span>
@@ -162,10 +175,7 @@ export function TicketList({ role }: TicketListProps) {
                       <Badge variant={statusVariant(ticket.status)}>
                         {statusLabel(ticket.status)}
                       </Badge>
-                      <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                        {ticket.location.name}
-                      </span>
-                      <Badge variant="outline">{ticket.category}</Badge>
+                      <Badge variant={categoryVariant(ticket.category)}>{categoryLabel(ticket.category)}</Badge>
                     </div>
                     <p className="line-clamp-2 text-sm text-gray-700 dark:text-gray-200">{ticket.description}</p>
                     <p className="text-xs text-gray-400 dark:text-gray-500">

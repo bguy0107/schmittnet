@@ -13,7 +13,7 @@ export default async function OwnerPage() {
 
   return (
     <div>
-      <h1 className="mb-6 text-xl font-semibold text-gray-900">Dashboard</h1>
+      <h1 className="mb-6 text-xl font-semibold text-gray-900 dark:text-gray-100">Dashboard</h1>
       <OwnerDashboard ownerId={session.user.ownerId} />
     </div>
   );

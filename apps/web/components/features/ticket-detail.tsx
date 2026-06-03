@@ -54,13 +54,23 @@ interface TicketRow {
 
 function statusVariant(status: TicketStatus) {
   switch (status) {
-    case "OPEN": return "info" as const;
+    case "OPEN": return "destructive" as const;
     case "IN_PROGRESS": return "warning" as const;
-    case "AWAITING_APPROVAL": return "destructive" as const;
+    case "ON_HOLD": return "orange" as const;
+    case "AWAITING_APPROVAL": return "pink" as const;
     case "APPROVED": return "success" as const;
     case "RESOLVED": return "success" as const;
+    case "CANCELLED": return "success" as const;
     default: return "secondary" as const;
   }
+}
+
+function categoryVariant(category: string) {
+  return category === "IT" ? "purple" as const : "silver" as const;
+}
+
+function categoryLabel(category: string) {
+  return category === "IT" ? "IT" : "Maintenance";
 }
 
 const TERMINAL = new Set<TicketStatus>(["RESOLVED", "CANCELLED"]);
@@ -199,7 +209,7 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
               #{t.id.slice(0, 8).toUpperCase()}
             </span>
             <Badge variant={statusVariant(t.status)}>{statusLabel(t.status)}</Badge>
-            <Badge variant="outline">{t.category}</Badge>
+            <Badge variant={categoryVariant(t.category)}>{categoryLabel(t.category)}</Badge>
             {t.priority !== "NORMAL" && (
               <Badge variant={t.priority === "P0" ? "destructive" : "secondary"}>
                 {priorityLabel(t.priority)}
