@@ -583,6 +583,15 @@ function EditLocationPanel({
   const qc = useQueryClient();
   const [editError, setEditError] = useState<string | null>(null);
 
+  const deleteLocation = useMutation({
+    mutationFn: () => fetchApi(`/api/locations/${location.id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["admin-locations"] });
+      onClose();
+    },
+    onError: (err) => setEditError(err instanceof Error ? err.message : "Failed to delete location"),
+  });
+
   const updateLocation = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
       fetchApi(`/api/locations/${location.id}`, { method: "PATCH", body: JSON.stringify(body) }),
@@ -698,6 +707,30 @@ function EditLocationPanel({
             </Button>
             <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
               Invalidates the existing QR code immediately.
+            </p>
+          </div>
+
+          <div className="border-t pt-4">
+            <Button
+              type="button"
+              size="sm"
+              variant="destructive"
+              disabled={deleteLocation.isPending}
+              onClick={() => {
+                if (
+                  confirm(
+                    `Permanently delete "${location.name}"? This will also delete all tickets and associated records for this location. This cannot be undone.`,
+                  )
+                ) {
+                  deleteLocation.mutate();
+                }
+              }}
+            >
+              <Trash2 className="mr-1 h-4 w-4" />
+              {deleteLocation.isPending ? "Deleting…" : "Delete location"}
+            </Button>
+            <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+              Permanently removes this location and all its tickets.
             </p>
           </div>
         </form>

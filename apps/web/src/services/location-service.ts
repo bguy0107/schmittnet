@@ -46,6 +46,17 @@ export const locationService = {
     return location;
   },
 
+  async deleteLocation(id: string, actorRole: Role) {
+    if (actorRole !== "SUPER_ADMIN") {
+      throw new ForbiddenError("Only super-admins may delete locations");
+    }
+
+    const existing = await locationRepository.findById(id);
+    if (!existing) throw new NotFoundError("Location not found");
+
+    await locationRepository.deleteWithCascade(id);
+  },
+
   async updateLocation(id: string, actorRole: Role, body: unknown) {
     if (actorRole !== "SUPER_ADMIN") {
       throw new ForbiddenError("Only super-admins may update locations");
