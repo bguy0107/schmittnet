@@ -136,7 +136,6 @@ model User {
   history            TicketHistory[]
   approvalsRequested TicketApproval[] @relation("RequestedBy")
   approvalsActioned  TicketApproval[] @relation("ActionedBy")
-  watchedTickets     TicketWatcher[]
 
   @@map("users")
 }
@@ -177,7 +176,6 @@ model Ticket {
   media     TicketMedia[]
   history   TicketHistory[]
   approvals TicketApproval[]
-  watchers  TicketWatcher[]
 
   @@map("tickets")
 }
@@ -230,18 +228,6 @@ model TicketApproval {
   @@map("ticket_approvals")
 }
 
-model TicketWatcher {
-  id         String   @id @default(uuid())
-  ticketId   String   @map("ticket_id")
-  userId     String   @map("user_id")
-  createdAt  DateTime @default(now()) @map("created_at")
-
-  ticket Ticket @relation(fields: [ticketId], references: [id])
-  user   User   @relation(fields: [userId], references: [id])
-
-  @@unique([ticketId, userId])
-  @@map("ticket_watchers")
-}
 
 model Setting {
   key   String @id

@@ -14,9 +14,7 @@ import {
   useAddNote,
   useClaimTicket,
   useResolveApproval,
-  useTicketWatchStatus,
-  useWatchTicket,
-  useUnwatchTicket,
+
 } from "@/hooks/use-tickets";
 import { formatDateTime, statusLabel, priorityLabel } from "@schmittnet/utils";
 import type { Role, TicketStatus } from "@schmittnet/types";
@@ -108,10 +106,6 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
   const addNote = useAddNote(ticketId);
   const claimTicket = useClaimTicket(ticketId);
   const resolveApproval = useResolveApproval(ticketId);
-
-  const { data: watchStatus } = useTicketWatchStatus(ticketId);
-  const watchTicket = useWatchTicket(ticketId);
-  const unwatchTicket = useUnwatchTicket(ticketId);
 
   const [noteContent, setNoteContent] = useState("");
   const [onHoldReason, setOnHoldReason] = useState("");
@@ -511,39 +505,6 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
           </CardContent>
         </Card>
       )}
-
-      {/* Watch */}
-      <Card>
-        <CardHeader className="pb-2 pt-4">
-          <CardTitle className="text-sm font-medium">Watch this ticket</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {watchStatus?.isWatching ? (
-            <div className="space-y-2">
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                You are watching this ticket.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => unwatchTicket.mutate()}
-                disabled={unwatchTicket.isPending}
-              >
-                {unwatchTicket.isPending ? "Removing…" : "Unwatch"}
-              </Button>
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => watchTicket.mutate()}
-              disabled={watchTicket.isPending}
-            >
-              {watchTicket.isPending ? "Saving…" : "Watch"}
-            </Button>
-          )}
-        </CardContent>
-      </Card>
 
       {/* History */}
       <Card>

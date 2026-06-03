@@ -117,14 +117,13 @@ export const userRepository = {
   },
 
   async hasAssociatedData(id: string) {
-    const [tickets, notes, approvalsReq, approvalsAct, watchers] = await Promise.all([
+    const [tickets, notes, approvalsReq, approvalsAct] = await Promise.all([
       prisma.ticket.count({ where: { assignedTo: id } }),
       prisma.ticketHistory.count({ where: { authorId: id } }),
       prisma.ticketApproval.count({ where: { requestedBy: id } }),
       prisma.ticketApproval.count({ where: { approverId: id } }),
-      prisma.ticketWatcher.count({ where: { userId: id } }),
     ]);
-    return tickets + notes + approvalsReq + approvalsAct + watchers > 0;
+    return tickets + notes + approvalsReq + approvalsAct > 0;
   },
 
   async delete(id: string) {

@@ -84,7 +84,6 @@ export const locationRepository = {
         .then((rows) => rows.map((r) => r.id));
 
       if (ticketIds.length > 0) {
-        await tx.ticketWatcher.deleteMany({ where: { ticketId: { in: ticketIds } } });
         await tx.ticketApproval.deleteMany({ where: { ticketId: { in: ticketIds } } });
         await tx.ticketHistory.deleteMany({ where: { ticketId: { in: ticketIds } } });
         await tx.ticketMedia.deleteMany({ where: { ticketId: { in: ticketIds } } });

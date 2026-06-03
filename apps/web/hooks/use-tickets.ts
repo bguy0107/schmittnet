@@ -127,34 +127,6 @@ export function useSubmitTicket(token: string) {
   });
 }
 
-export function useTicketWatchStatus(ticketId: string) {
-  return useQuery({
-    queryKey: ["ticket-watch", ticketId],
-    queryFn: () =>
-      fetchApi<{ isWatching: boolean }>(
-        `/api/tickets/${ticketId}/watch`,
-      ),
-    enabled: !!ticketId,
-  });
-}
-
-export function useWatchTicket(ticketId: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: () =>
-      fetchApi(`/api/tickets/${ticketId}/watch`, { method: "POST" }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ["ticket-watch", ticketId] }),
-  });
-}
-
-export function useUnwatchTicket(ticketId: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: () =>
-      fetchApi(`/api/tickets/${ticketId}/watch`, { method: "DELETE" }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ["ticket-watch", ticketId] }),
-  });
-}
 
 export function useDiscordSettings() {
   return useQuery({
