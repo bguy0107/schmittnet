@@ -23,12 +23,6 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   {
-    href: "/tickets",
-    label: "Tickets",
-    icon: <Ticket className="h-4 w-4" />,
-    roles: ["SUPER_ADMIN", "TECHNICIAN", "OWNER", "OWNER_STAFF"],
-  },
-  {
     href: "/owner",
     label: "Dashboard",
     icon: <BarChart2 className="h-4 w-4" />,
@@ -39,6 +33,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Dashboard",
     icon: <BarChart2 className="h-4 w-4" />,
     roles: ["TECHNICIAN"],
+  },
+  {
+    href: "/tickets",
+    label: "Tickets",
+    icon: <Ticket className="h-4 w-4" />,
+    roles: ["SUPER_ADMIN", "TECHNICIAN", "OWNER", "OWNER_STAFF"],
   },
   {
     href: "/admin",
