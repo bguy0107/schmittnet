@@ -94,6 +94,21 @@ export function useResolveApproval(ticketId: string) {
   });
 }
 
+export function useUpdateTicketDeadline(ticketId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (deadline: string | null) =>
+      fetchApi(`/api/tickets/${ticketId}/deadline`, {
+        method: "PATCH",
+        body: JSON.stringify({ deadline }),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["ticket", ticketId] });
+      void qc.invalidateQueries({ queryKey: ["tickets"] });
+    },
+  });
+}
+
 export function useOpenTicket() {
   const qc = useQueryClient();
   return useMutation({

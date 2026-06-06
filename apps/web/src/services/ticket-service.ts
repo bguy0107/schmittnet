@@ -403,6 +403,32 @@ export const ticketService = {
     return result;
   },
 
+  async updateDeadline(
+    ticketId: string,
+    actorRole: Role,
+    actorOwnerId: string | null,
+    body: unknown,
+  ) {
+    const { deadline } = z.object({
+      deadline: z.string().datetime().nullable(),
+    }).parse(body);
+
+    const ticket = await ticketRepository.findById(ticketId);
+    if (!ticket) throw new NotFoundError("Ticket not found");
+
+    if (actorRole === "OWNER" || actorRole === "OWNER_STAFF") {
+      if (!actorOwnerId) throw new ForbiddenError("No owner context");
+      const ownerIds = await locationRepository.getOwnerIdsByLocationIds([ticket.location.id]);
+      if (!ownerIds.includes(actorOwnerId)) throw new ForbiddenError("Access denied");
+    }
+
+    if (ticket.status === "CANCELLED" || ticket.status === "RESOLVED") {
+      throw new ValidationError("Cannot update deadline on a closed ticket");
+    }
+
+    return ticketRepository.updateDeadline(ticketId, deadline ? new Date(deadline) : null);
+  },
+
   async updatePublicDeadline(token: string, ticketId: string, body: unknown) {
     const { deadline } = z.object({
       deadline: z.string().datetime().nullable(),

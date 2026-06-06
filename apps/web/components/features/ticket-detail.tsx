@@ -14,7 +14,7 @@ import {
   useAddNote,
   useClaimTicket,
   useResolveApproval,
-
+  useUpdateTicketDeadline,
 } from "@/hooks/use-tickets";
 import { formatDateTime, statusLabel, priorityLabel } from "@schmittnet/utils";
 import type { Role, TicketStatus } from "@schmittnet/types";
@@ -116,8 +116,11 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
   const addNote = useAddNote(ticketId);
   const claimTicket = useClaimTicket(ticketId);
   const resolveApproval = useResolveApproval(ticketId);
+  const updateDeadline = useUpdateTicketDeadline(ticketId);
 
   const [noteContent, setNoteContent] = useState("");
+  const [showDeadlineForm, setShowDeadlineForm] = useState(false);
+  const [deadlineValue, setDeadlineValue] = useState("");
   const [onHoldReason, setOnHoldReason] = useState("");
   const [showOnHoldForm, setShowOnHoldForm] = useState(false);
   const [showApprovalForm, setShowApprovalForm] = useState(false);
@@ -236,12 +239,12 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
               <dt className="font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Opened</dt>
               <dd className="mt-0.5 text-gray-500 dark:text-gray-400">{formatDateTime(t.createdAt)}</dd>
             </div>
-            {t.deadline && (
-              <div>
-                <dt className="font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Deadline</dt>
-                <dd className="mt-0.5 text-gray-500 dark:text-gray-400">{formatDateTime(t.deadline)}</dd>
-              </div>
-            )}
+            <div>
+              <dt className="font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Deadline</dt>
+              <dd className="mt-0.5 text-gray-500 dark:text-gray-400">
+                {t.deadline ? formatDateTime(t.deadline) : <span className="italic text-gray-400 dark:text-gray-600">None</span>}
+              </dd>
+            </div>
             {t.resolvedAt && (
               <div>
                 <dt className="font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Resolved</dt>
@@ -504,6 +507,54 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
                     <span className="font-medium text-gray-700 dark:text-gray-200">Approval for: </span>
                     <span className="text-gray-600 dark:text-gray-300">{pendingApproval.approvalReason}</span>
                   </div>
+                )}
+              </div>
+            )}
+
+            {/* Deadline — show add button only when no deadline is set */}
+            {!t.deadline && !showDeadlineForm && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={() => { setDeadlineValue(""); setShowDeadlineForm(true); }}
+              >
+                Add deadline
+              </Button>
+            )}
+            {showDeadlineForm && (
+              <div className="space-y-2 rounded-md border p-3">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Set a completion deadline</p>
+                <input
+                  type="date"
+                  value={deadlineValue}
+                  onChange={(e) => setDeadlineValue(e.target.value)}
+                  min={new Date().toISOString().slice(0, 10)}
+                  className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring dark:bg-gray-900"
+                />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    disabled={!deadlineValue || updateDeadline.isPending}
+                    onClick={() =>
+                      updateDeadline.mutate(
+                        deadlineValue ? new Date(deadlineValue).toISOString() : null,
+                        { onSuccess: () => setShowDeadlineForm(false) },
+                      )
+                    }
+                  >
+                    {updateDeadline.isPending ? "Saving…" : "Save deadline"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowDeadlineForm(false)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+                {updateDeadline.isError && (
+                  <p className="text-xs text-destructive">Failed to save deadline — please try again.</p>
                 )}
               </div>
             )}
