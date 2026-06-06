@@ -484,9 +484,8 @@ function UsersTab() {
                   <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                     {userView === "active" ? (
                       <Button
-                        variant="ghost"
+                        variant="destructive"
                         size="sm"
-                        className="text-destructive hover:text-destructive"
                         onClick={() => {
                           if (confirm(`Deactivate ${u.name}?`)) {
                             toggleActive.mutate({ id: u.id, isActive: false });

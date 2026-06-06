@@ -511,9 +511,9 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
             {/* Cancel — available to techs and owners while not terminal */}
             {!showCancelForm ? (
               <Button
-                variant="ghost"
+                variant="destructive"
                 size="sm"
-                className="w-full text-destructive hover:text-destructive"
+                className="w-full"
                 onClick={() => {
                   setShowOnHoldForm(false); setOnHoldReason("");
                   setShowApprovalForm(false); setApprovalReason("");
