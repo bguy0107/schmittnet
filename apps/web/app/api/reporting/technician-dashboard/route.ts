@@ -119,6 +119,7 @@ export async function GET(req: NextRequest) {
       awaitingApproval: countByStatus["AWAITING_APPROVAL"] ?? 0,
       resolved: countByStatus["RESOLVED"] ?? 0,
       avgResolutionHours: avgResolutionMs ? avgResolutionMs / 1000 / 60 / 60 : null,
+      categories: techUser?.categories ?? [],
       ticketsByCategory: categoryCounts.map((c: { category: string; _count: { _all: number } }) => ({
         category: c.category,
         count: c._count._all,

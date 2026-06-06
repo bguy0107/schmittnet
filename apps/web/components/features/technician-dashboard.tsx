@@ -7,6 +7,7 @@ import { AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useTechnicianDashboard } from "@/hooks/use-dashboard";
+import type { Category } from "@schmittnet/types";
 
 type Preset = "all" | "7d" | "30d" | "90d";
 
@@ -54,6 +55,14 @@ function StatCard({ label, value, accent, href }: StatCardProps) {
   return card;
 }
 
+function ticketHref(status: string, categories: Category[]): string {
+  const params = new URLSearchParams({ status });
+  // When the technician covers exactly one category, pre-filter by it so the ticket list
+  // dropdown reflects the scope. With multiple categories the service layer scopes automatically.
+  if (categories.length === 1) params.set("category", categories[0]!);
+  return `/tickets?${params.toString()}`;
+}
+
 export function TechnicianDashboard() {
   const [preset, setPreset] = useState<Preset>("30d");
   const { from, to } = getDateRange(preset);
@@ -93,13 +102,13 @@ export function TechnicianDashboard() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Open" value={data.open} accent="text-blue-600" href="/tickets?status=OPEN" />
-        <StatCard label="In Progress" value={data.inProgress} accent="text-yellow-600" href="/tickets?status=IN_PROGRESS" />
-        <StatCard label="On Hold" value={data.onHold} accent="text-orange-600" href="/tickets?status=ON_HOLD" />
-        <StatCard label="Awaiting Approval" value={data.awaitingApproval} accent="text-red-600" href="/tickets?status=AWAITING_APPROVAL" />
+        <StatCard label="Open" value={data.open} accent="text-blue-600" href={ticketHref("OPEN", data.categories)} />
+        <StatCard label="In Progress" value={data.inProgress} accent="text-yellow-600" href={ticketHref("IN_PROGRESS", data.categories)} />
+        <StatCard label="On Hold" value={data.onHold} accent="text-orange-600" href={ticketHref("ON_HOLD", data.categories)} />
+        <StatCard label="Awaiting Approval" value={data.awaitingApproval} accent="text-red-600" href={ticketHref("AWAITING_APPROVAL", data.categories)} />
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Resolved" value={data.resolved} accent="text-green-600" href="/tickets?status=RESOLVED" />
+        <StatCard label="Resolved" value={data.resolved} accent="text-green-600" href={ticketHref("RESOLVED", data.categories)} />
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

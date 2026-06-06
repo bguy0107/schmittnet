@@ -145,6 +145,7 @@ export const ticketService = {
     pageSize?: number;
   }) {
     let locationIds: string[] | undefined;
+    let techCategories: import("@schmittnet/types").Category[] | undefined;
 
     if (actorRole === "OWNER" || actorRole === "OWNER_STAFF") {
       if (!actorOwnerId) throw new ForbiddenError("No owner context");
@@ -154,8 +155,11 @@ export const ticketService = {
       if (user?.ownerId) {
         locationIds = await locationRepository.getLocationIdsByOwner(user.ownerId);
       }
+      if (user && user.categories.length > 0) {
+        techCategories = user.categories as import("@schmittnet/types").Category[];
+      }
     }
-    // SUPER_ADMIN sees all — locationIds stays undefined
+    // SUPER_ADMIN sees all — locationIds and techCategories stay undefined
 
     if (filter.locationId) {
       if (locationIds) {
@@ -165,10 +169,28 @@ export const ticketService = {
       }
     }
 
+    // When the caller requests a specific category, intersect with the technician's allowed categories.
+    let resolvedCategory: import("@schmittnet/types").Category | undefined;
+    let resolvedCategories: import("@schmittnet/types").Category[] | undefined;
+
+    if (filter.category) {
+      const requested = filter.category as import("@schmittnet/types").Category;
+      if (!techCategories || techCategories.includes(requested)) {
+        resolvedCategory = requested;
+      } else {
+        // Technician doesn't have access to the requested category — return empty.
+        resolvedCategory = requested;
+        resolvedCategories = [];
+      }
+    } else if (techCategories) {
+      resolvedCategories = techCategories;
+    }
+
     return ticketRepository.findMany({
       locationIds,
       status: filter.status as never,
-      category: filter.category as never,
+      category: resolvedCategory,
+      categories: resolvedCategories,
       search: filter.search,
       page: filter.page,
       pageSize: filter.pageSize,

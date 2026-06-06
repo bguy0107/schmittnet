@@ -127,6 +127,7 @@ export interface TechnicianDashboardStats {
   awaitingApproval: number;
   resolved: number;
   avgResolutionHours: number | null;
+  categories: Category[];
   ticketsByCategory: Array<{ category: Category; count: number }>;
   ticketsByLocation: Array<{ locationName: string; count: number }>;
 }
