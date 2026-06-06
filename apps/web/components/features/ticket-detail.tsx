@@ -16,7 +16,7 @@ import {
   useResolveApproval,
   useUpdateTicketDeadline,
 } from "@/hooks/use-tickets";
-import { formatDateTime, statusLabel, priorityLabel } from "@schmittnet/utils";
+import { formatDate, formatDateTime, statusLabel, priorityLabel } from "@schmittnet/utils";
 import type { Role, TicketStatus } from "@schmittnet/types";
 
 // Actual shape returned by GET /api/tickets/[id] (Prisma row, not @schmittnet/types TicketDetail)
@@ -242,7 +242,7 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
             <div>
               <dt className="font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Deadline</dt>
               <dd className="mt-0.5 text-gray-500 dark:text-gray-400">
-                {t.deadline ? formatDateTime(t.deadline) : <span className="italic text-gray-400 dark:text-gray-600">None</span>}
+                {t.deadline ? formatDate(t.deadline) : <span className="italic text-gray-400 dark:text-gray-600">None</span>}
               </dd>
             </div>
             {t.resolvedAt && (

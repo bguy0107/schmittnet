@@ -81,13 +81,6 @@ function formatDate(iso: string) {
   });
 }
 
-function formatDateOnly(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
 
 async function uploadFile(file: File): Promise<string> {
   const presignRes = await fetch("/api/upload/presign", {
@@ -228,7 +221,7 @@ export function PublicTicketDetail({ token, ticketId }: Props) {
           {t.deadline && (
             <div>
               <dt className="font-medium uppercase tracking-wide text-gray-400">Deadline</dt>
-              <dd className="mt-0.5 text-gray-500">{formatDateOnly(t.deadline)}</dd>
+              <dd className="mt-0.5 text-gray-500">{new Date(t.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</dd>
             </div>
           )}
           {t.resolvedAt && (
