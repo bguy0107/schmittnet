@@ -12,7 +12,7 @@ import {
 import { logger } from "@/src/lib/logger";
 import { getSignedReadUrl } from "@/src/lib/minio";
 import { notificationService } from "./notification-service";
-import type { Role } from "@schmittnet/types";
+import type { Role, Category } from "@schmittnet/types";
 
 export const submitTicketSchema = z.object({
   category: z.enum(["IT", "MAINTENANCE"]),
@@ -145,7 +145,7 @@ export const ticketService = {
     pageSize?: number;
   }) {
     let locationIds: string[] | undefined;
-    let techCategories: import("@schmittnet/types").Category[] | undefined;
+    let techCategories: Category[] | undefined;
 
     if (actorRole === "OWNER" || actorRole === "OWNER_STAFF") {
       if (!actorOwnerId) throw new ForbiddenError("No owner context");
@@ -156,7 +156,7 @@ export const ticketService = {
         locationIds = await locationRepository.getLocationIdsByOwner(user.ownerId);
       }
       if (user && user.categories.length > 0) {
-        techCategories = user.categories as import("@schmittnet/types").Category[];
+        techCategories = user.categories as Category[];
       }
     }
     // SUPER_ADMIN sees all — locationIds and techCategories stay undefined
@@ -170,11 +170,11 @@ export const ticketService = {
     }
 
     // When the caller requests a specific category, intersect with the technician's allowed categories.
-    let resolvedCategory: import("@schmittnet/types").Category | undefined;
-    let resolvedCategories: import("@schmittnet/types").Category[] | undefined;
+    let resolvedCategory: Category | undefined;
+    let resolvedCategories: Category[] | undefined;
 
     if (filter.category) {
-      const requested = filter.category as import("@schmittnet/types").Category;
+      const requested = filter.category as Category;
       if (!techCategories || techCategories.includes(requested)) {
         resolvedCategory = requested;
       } else {
