@@ -511,19 +511,24 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
               </div>
             )}
 
-            {/* Deadline — show add button only when no deadline is set */}
-            {!t.deadline && !showDeadlineForm && (
+            {/* Deadline */}
+            {!showDeadlineForm && (
               <Button
                 size="sm"
                 className="w-full bg-yellow-400 text-yellow-900 hover:bg-yellow-500"
-                onClick={() => { setDeadlineValue(""); setShowDeadlineForm(true); }}
+                onClick={() => {
+                  setDeadlineValue(t.deadline ? t.deadline.slice(0, 10) : "");
+                  setShowDeadlineForm(true);
+                }}
               >
-                Add deadline
+                {t.deadline ? "Update deadline" : "Add deadline"}
               </Button>
             )}
             {showDeadlineForm && (
               <div className="space-y-2 rounded-md border p-3">
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Set a completion deadline</p>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                  {t.deadline ? "Update completion deadline" : "Set a completion deadline"}
+                </p>
                 <input
                   type="date"
                   value={deadlineValue}
