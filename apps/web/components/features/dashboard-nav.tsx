@@ -35,6 +35,12 @@ const NAV_ITEMS: NavItem[] = [
     roles: ["SUPER_ADMIN", "OWNER", "OWNER_STAFF"],
   },
   {
+    href: "/technician" as Route,
+    label: "Dashboard",
+    icon: <BarChart2 className="h-4 w-4" />,
+    roles: ["TECHNICIAN"],
+  },
+  {
     href: "/admin",
     label: "Admin",
     icon: <Settings className="h-4 w-4" />,

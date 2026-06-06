@@ -119,3 +119,13 @@ export interface DashboardStats {
   avgResolutionHours: number | null;
   ticketsByLocation: Array<{ locationName: string; count: number }>;
 }
+
+export interface TechnicianDashboardStats {
+  inProgress: number;
+  onHold: number;
+  awaitingApproval: number;
+  resolved: number;
+  avgResolutionHours: number | null;
+  ticketsByCategory: Array<{ category: Category; count: number }>;
+  ticketsByLocation: Array<{ locationName: string; count: number }>;
+}
