@@ -20,6 +20,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       id,
       session.user.id,
       session.user.role,
+      session.user.ownerId ?? null,
       body,
     );
     return NextResponse.json(result);

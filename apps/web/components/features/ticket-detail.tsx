@@ -126,6 +126,8 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
   const [approvalNotes, setApprovalNotes] = useState("");
   const [showResolveForm, setShowResolveForm] = useState(false);
   const [resolveNote, setResolveNote] = useState("");
+  const [showCancelForm, setShowCancelForm] = useState(false);
+  const [cancelNote, setCancelNote] = useState("");
 
   if (isLoading) {
     return <div className="py-16 text-center text-sm text-gray-500 dark:text-gray-400">Loading…</div>;
@@ -321,7 +323,7 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
 
             {t.status === "IN_PROGRESS" && isTech && (
               <>
-                {!showOnHoldForm && !showApprovalForm && !showResolveForm ? (
+                {!showOnHoldForm && !showApprovalForm && !showResolveForm && !showCancelForm ? (
                   <div className="flex flex-wrap gap-2">
                     <Button variant="outline" size="sm" onClick={() => setShowOnHoldForm(true)}>
                       Put On Hold
@@ -503,6 +505,55 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
                     <span className="text-gray-600 dark:text-gray-300">{pendingApproval.approvalReason}</span>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Cancel — available to techs and owners while not terminal */}
+            {!showCancelForm ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-destructive hover:text-destructive"
+                onClick={() => {
+                  setShowOnHoldForm(false); setOnHoldReason("");
+                  setShowApprovalForm(false); setApprovalReason("");
+                  setShowResolveForm(false); setResolveNote("");
+                  setShowCancelForm(true);
+                }}
+              >
+                Cancel ticket
+              </Button>
+            ) : (
+              <div className="space-y-2 rounded-md border border-destructive/30 bg-destructive/5 p-3">
+                <p className="text-sm font-medium text-destructive">Cancel this ticket?</p>
+                <Textarea
+                  placeholder="Reason for cancellation (optional)…"
+                  value={cancelNote}
+                  onChange={(e) => setCancelNote(e.target.value)}
+                  rows={2}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    disabled={updateStatus.isPending}
+                    onClick={() =>
+                      updateStatus.mutate(
+                        { status: "CANCELLED", note: cancelNote.trim() || undefined },
+                        { onSuccess: () => { setShowCancelForm(false); setCancelNote(""); } },
+                      )
+                    }
+                  >
+                    {updateStatus.isPending ? "Cancelling…" : "Confirm cancel"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => { setShowCancelForm(false); setCancelNote(""); }}
+                  >
+                    Back
+                  </Button>
+                </div>
               </div>
             )}
 

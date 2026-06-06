@@ -192,16 +192,29 @@ export const ticketService = {
     ticketId: string,
     actorId: string,
     actorRole: Role,
+    actorOwnerId: string | null,
     body: unknown,
   ) {
-    if (actorRole !== "TECHNICIAN" && actorRole !== "SUPER_ADMIN") {
-      throw new ForbiddenError("Only technicians may update ticket status");
+    const isTechRole = actorRole === "TECHNICIAN" || actorRole === "SUPER_ADMIN";
+    const isOwnerRole = actorRole === "OWNER" || actorRole === "OWNER_STAFF";
+    if (!isTechRole && !isOwnerRole) {
+      throw new ForbiddenError("Insufficient permissions to update ticket status");
     }
 
     const data = statusTransitionSchema.parse(body);
 
+    if (isOwnerRole && data.status !== "CANCELLED") {
+      throw new ForbiddenError("Owners may only cancel tickets");
+    }
+
     const current = await ticketRepository.findById(ticketId);
     if (!current) throw new NotFoundError("Ticket not found");
+
+    if (isOwnerRole) {
+      if (!actorOwnerId) throw new ForbiddenError("No owner context");
+      const ownerIds = await locationRepository.getOwnerIdsByLocationIds([current.location.id]);
+      if (!ownerIds.includes(actorOwnerId)) throw new ForbiddenError("Access denied");
+    }
 
     const allowed = ALLOWED_TRANSITIONS[current.status] ?? [];
     if (!allowed.includes(data.status)) {
