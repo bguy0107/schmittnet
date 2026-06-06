@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/src/lib/prisma";
+import { userRepository } from "@/src/repositories/user-repository";
+import { locationRepository } from "@/src/repositories/location-repository";
 import { toApiError, AppError, UnauthorizedError, ForbiddenError, ValidationError } from "@/src/lib/errors";
 import { logger } from "@/src/lib/logger";
 
@@ -45,12 +47,26 @@ export async function GET(req: NextRequest) {
       : {};
 
   try {
-    // Current workload: not date-scoped — a ticket claimed 60 days ago is still active today.
+    // Resolve location scope — mirrors listTickets in ticket-service.ts.
+    // Technicians scoped to an owner only see that owner's locations; unscoped see all.
+    const techUser = await userRepository.findById(userId);
+    const scopedLocationIds = techUser?.ownerId
+      ? await locationRepository.getLocationIdsByOwner(techUser.ownerId)
+      : undefined;
+
+    const locationFilter = scopedLocationIds ? { locationId: { in: scopedLocationIds } } : {};
+
+    // OPEN tickets: location-scoped, no assignee filter (unassigned by definition).
+    const openWhere = { ...locationFilter, status: "OPEN" as const };
+
+    // Active workload: assigned to this technician, not date-scoped.
     const workloadWhere = { assignedTo: userId };
-    // Historical queries (resolved count, avg time, breakdowns) respect the date filter.
+
+    // Historical: assigned to this technician, date-scoped.
     const historicalWhere = { assignedTo: userId, ...dateFilter };
 
-    const [statusCounts, categoryCounts, resolvedTickets, byLocation] = await Promise.all([
+    const [openCount, workloadCounts, categoryCounts, resolvedTickets, byLocation] = await Promise.all([
+      prisma.ticket.count({ where: openWhere }),
       prisma.ticket.groupBy({
         by: ["status"],
         where: workloadWhere,
@@ -75,7 +91,7 @@ export async function GET(req: NextRequest) {
     ]);
 
     const countByStatus = Object.fromEntries(
-      statusCounts.map((s: { status: string; _count: { _all: number } }) => [s.status, s._count._all]),
+      workloadCounts.map((s: { status: string; _count: { _all: number } }) => [s.status, s._count._all]),
     );
 
     const avgResolutionMs =
@@ -93,6 +109,7 @@ export async function GET(req: NextRequest) {
     const nameMap = Object.fromEntries(locationNames.map((l: { id: string; name: string }) => [l.id, l.name]));
 
     return NextResponse.json({
+      open: openCount,
       inProgress: countByStatus["IN_PROGRESS"] ?? 0,
       onHold: countByStatus["ON_HOLD"] ?? 0,
       awaitingApproval: countByStatus["AWAITING_APPROVAL"] ?? 0,

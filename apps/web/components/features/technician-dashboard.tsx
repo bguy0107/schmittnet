@@ -85,9 +85,12 @@ export function TechnicianDashboard() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatCard label="Open" value={data.open} accent="text-blue-600" />
         <StatCard label="In Progress" value={data.inProgress} accent="text-yellow-600" />
         <StatCard label="On Hold" value={data.onHold} accent="text-orange-600" />
         <StatCard label="Awaiting Approval" value={data.awaitingApproval} accent="text-red-600" />
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Resolved" value={data.resolved} accent="text-green-600" />
       </div>
 

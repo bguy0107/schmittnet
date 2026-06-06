@@ -121,6 +121,7 @@ export interface DashboardStats {
 }
 
 export interface TechnicianDashboardStats {
+  open: number;
   inProgress: number;
   onHold: number;
   awaitingApproval: number;
