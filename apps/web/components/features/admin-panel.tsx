@@ -170,8 +170,8 @@ function EditUserPanel({
                 {...register("ownerId")}
               >
                 <option value="">— All owners —</option>
-                {owners.map((o) => (
-                  <option key={o.id} value={o.id}>
+                {owners.filter((o) => o.ownerId).map((o) => (
+                  <option key={o.id} value={o.ownerId!}>
                     {o.name ?? o.email}
                   </option>
                 ))}
@@ -411,8 +411,8 @@ function UsersTab() {
                   {...register("ownerId")}
                 >
                   <option value="">— All owners —</option>
-                  {owners.map((o) => (
-                    <option key={o.id} value={o.id}>
+                  {owners.filter((o) => o.ownerId).map((o) => (
+                    <option key={o.id} value={o.ownerId!}>
                       {o.name ?? o.email}
                     </option>
                   ))}
@@ -815,8 +815,8 @@ function LocationsTab() {
                 {...register("ownerId")}
               >
                 <option value="">— Select owner —</option>
-                {owners.map((o) => (
-                  <option key={o.id} value={o.id}>
+                {owners.filter((o) => o.ownerId).map((o) => (
+                  <option key={o.id} value={o.ownerId!}>
                     {o.name ?? o.email}
                   </option>
                 ))}
