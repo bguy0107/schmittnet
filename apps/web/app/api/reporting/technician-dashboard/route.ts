@@ -47,23 +47,27 @@ export async function GET(req: NextRequest) {
       : {};
 
   try {
-    // Resolve location scope — mirrors listTickets in ticket-service.ts.
-    // Technicians scoped to an owner only see that owner's locations; unscoped see all.
+    // Resolve owner + category scope for this technician.
     const techUser = await userRepository.findById(userId);
     const scopedLocationIds = techUser?.ownerId
       ? await locationRepository.getLocationIdsByOwner(techUser.ownerId)
       : undefined;
 
     const locationFilter = scopedLocationIds ? { locationId: { in: scopedLocationIds } } : {};
+    const categoryFilter =
+      techUser && techUser.categories.length > 0
+        ? { category: { in: techUser.categories } }
+        : {};
+    const scopeFilter = { ...locationFilter, ...categoryFilter };
 
-    // OPEN tickets: location-scoped, no assignee filter (unassigned by definition).
-    const openWhere = { ...locationFilter, status: "OPEN" as const };
+    // OPEN tickets: full scope filter, no assignee (unassigned by definition).
+    const openWhere = { ...scopeFilter, status: "OPEN" as const };
 
-    // Active workload: assigned to this technician, not date-scoped.
-    const workloadWhere = { assignedTo: userId };
+    // Active workload: assigned to this technician + scope, not date-scoped.
+    const workloadWhere = { assignedTo: userId, ...scopeFilter };
 
-    // Historical: assigned to this technician, date-scoped.
-    const historicalWhere = { assignedTo: userId, ...dateFilter };
+    // Historical: assigned to this technician + scope + date range.
+    const historicalWhere = { assignedTo: userId, ...scopeFilter, ...dateFilter };
 
     const [openCount, workloadCounts, categoryCounts, resolvedTickets, byLocation] = await Promise.all([
       prisma.ticket.count({ where: openWhere }),
