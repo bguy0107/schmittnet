@@ -514,9 +514,8 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
             {/* Deadline — show add button only when no deadline is set */}
             {!t.deadline && !showDeadlineForm && (
               <Button
-                variant="outline"
                 size="sm"
-                className="w-full"
+                className="w-full bg-yellow-400 text-yellow-900 hover:bg-yellow-500"
                 onClick={() => { setDeadlineValue(""); setShowDeadlineForm(true); }}
               >
                 Add deadline
