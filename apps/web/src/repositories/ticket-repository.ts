@@ -2,6 +2,12 @@ import { prisma } from "@/src/lib/prisma";
 import type { TicketStatus, Category, Priority } from "@schmittnet/types";
 import type { Prisma } from "@prisma/client";
 
+async function fetchUserName(userId: string | null): Promise<string | null> {
+  if (!userId) return null;
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true } });
+  return user?.name ?? null;
+}
+
 export interface ListTicketsFilter {
   locationIds?: string[];
   status?: TicketStatus;
@@ -167,8 +173,9 @@ export const ticketRepository = {
   },
 
   async addHistoryNote(ticketId: string, authorId: string | null, content: string) {
+    const authorName = await fetchUserName(authorId);
     return prisma.ticketHistory.create({
-      data: { ticketId, authorId: authorId ?? undefined, type: "NOTE", content },
+      data: { ticketId, authorId: authorId ?? undefined, authorName, type: "NOTE", content },
       select: {
         id: true,
         type: true,
@@ -187,10 +194,12 @@ export const ticketRepository = {
     fromStatus: string,
     toStatus: string,
   ) {
+    const authorName = await fetchUserName(authorId);
     return prisma.ticketHistory.create({
       data: {
         ticketId,
         authorId: authorId ?? undefined,
+        authorName,
         type: "STATUS_CHANGE",
         fromStatus: fromStatus as never,
         toStatus: toStatus as never,
@@ -207,6 +216,7 @@ export const ticketRepository = {
     note: string,
     extra?: { resolvedAt?: Date; onHoldReason?: string | null },
   ) {
+    const authorName = await fetchUserName(authorId);
     return prisma.$transaction(async (tx) => {
       const ticket = await tx.ticket.update({
         where: { id: ticketId },
@@ -214,10 +224,10 @@ export const ticketRepository = {
         select: { id: true, status: true, locationId: true, category: true },
       });
       await tx.ticketHistory.create({
-        data: { ticketId, authorId, type: "STATUS_CHANGE", fromStatus: fromStatus as never, toStatus: status as never },
+        data: { ticketId, authorId, authorName, type: "STATUS_CHANGE", fromStatus: fromStatus as never, toStatus: status as never },
       });
       await tx.ticketHistory.create({
-        data: { ticketId, authorId, type: "NOTE", content: note },
+        data: { ticketId, authorId, authorName, type: "NOTE", content: note },
       });
       return ticket;
     });
@@ -241,6 +251,7 @@ export const ticketRepository = {
       content = `Deadline updated to ${formatDate(deadline)}`;
     }
 
+    const authorName = await fetchUserName(actorId);
     return prisma.$transaction(async (tx) => {
       const ticket = await tx.ticket.update({
         where: { id },
@@ -251,6 +262,7 @@ export const ticketRepository = {
         data: {
           ticketId: id,
           authorId: actorId ?? undefined,
+          authorName,
           type: "DEADLINE_CHANGE",
           content,
         },
@@ -298,6 +310,7 @@ export const ticketRepository = {
   },
 
   async createApprovalAndUpdateStatus(ticketId: string, requestedBy: string, fromStatus: string, approvalReason?: string) {
+    const authorName = await fetchUserName(requestedBy);
     return prisma.$transaction(async (tx) => {
       await tx.ticketApproval.create({ data: { ticketId, requestedBy, approvalReason } });
       const ticket = await tx.ticket.update({
@@ -306,11 +319,11 @@ export const ticketRepository = {
         select: { id: true, status: true, locationId: true, category: true },
       });
       await tx.ticketHistory.create({
-        data: { ticketId, authorId: requestedBy, type: "STATUS_CHANGE", fromStatus: fromStatus as never, toStatus: "AWAITING_APPROVAL" },
+        data: { ticketId, authorId: requestedBy, authorName, type: "STATUS_CHANGE", fromStatus: fromStatus as never, toStatus: "AWAITING_APPROVAL" },
       });
       if (approvalReason) {
         await tx.ticketHistory.create({
-          data: { ticketId, authorId: requestedBy, type: "NOTE", content: `Approval requested: ${approvalReason}` },
+          data: { ticketId, authorId: requestedBy, authorName, type: "NOTE", content: `Approval requested: ${approvalReason}` },
         });
       }
       return ticket;
@@ -325,6 +338,7 @@ export const ticketRepository = {
     notes?: string,
   ) {
     const newTicketStatus = status === "APPROVED" ? "APPROVED" : "IN_PROGRESS";
+    const authorName = await fetchUserName(approverId);
     return prisma.$transaction(async (tx) => {
       const approval = await tx.ticketApproval.update({
         where: { id: approvalId },
@@ -344,6 +358,7 @@ export const ticketRepository = {
         data: {
           ticketId,
           authorId: approverId,
+          authorName,
           type: "STATUS_CHANGE",
           fromStatus: "AWAITING_APPROVAL",
           toStatus: newTicketStatus,
@@ -351,7 +366,7 @@ export const ticketRepository = {
       });
       if (notes) {
         await tx.ticketHistory.create({
-          data: { ticketId, authorId: approverId, type: "NOTE", content: notes },
+          data: { ticketId, authorId: approverId, authorName, type: "NOTE", content: notes },
         });
       }
       return approval;

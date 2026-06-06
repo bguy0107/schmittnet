@@ -199,6 +199,7 @@ model TicketHistory {
   id         String           @id @default(uuid())
   ticketId   String           @map("ticket_id")
   authorId   String?          @map("author_id")
+  authorName String?          @map("author_name")
   type       HistoryEntryType @default(NOTE)
   content    String?
   fromStatus TicketStatus?    @map("from_status")
