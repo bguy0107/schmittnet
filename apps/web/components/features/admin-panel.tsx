@@ -217,7 +217,7 @@ const createUserSchema = z.object({
   name: z.string().min(2),
   email: z.string().email(),
   role: z.enum(["SUPER_ADMIN", "OWNER", "OWNER_STAFF", "TECHNICIAN"]),
-  password: z.string().min(12, "Password must be at least 12 characters"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
   ownerId: z.string().optional(),
 });
 type CreateUserData = z.infer<typeof createUserSchema>;
@@ -371,7 +371,7 @@ function UsersTab() {
             </div>
             <div className="space-y-1">
               <Label htmlFor="u-password">Password</Label>
-              <Input id="u-password" type="password" placeholder="Min 12 chars" {...register("password")} />
+              <Input id="u-password" type="password" placeholder="Min 8 chars" {...register("password")} />
               {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
             </div>
 
