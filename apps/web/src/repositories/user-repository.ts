@@ -116,6 +116,13 @@ export const userRepository = {
     await prisma.user.update({ where: { id }, data: { isActive: false } });
   },
 
+  async unassignAndReopenTickets(userId: string) {
+    await prisma.ticket.updateMany({
+      where: { assignedTo: userId, status: { notIn: ["RESOLVED", "CANCELLED"] } },
+      data: { assignedTo: null, status: "OPEN" },
+    });
+  },
+
   async hasAssociatedData(id: string) {
     const [tickets, notes, approvalsReq, approvalsAct] = await Promise.all([
       prisma.ticket.count({ where: { assignedTo: id } }),

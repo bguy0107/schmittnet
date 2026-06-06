@@ -108,6 +108,12 @@ export const userService = {
       updates.ownerId = owner.id;
     }
 
-    return userRepository.update(id, updates);
+    const user = await userRepository.update(id, updates);
+
+    if (data.isActive === false && existing.isActive) {
+      await userRepository.unassignAndReopenTickets(id);
+    }
+
+    return user;
   },
 };
