@@ -53,6 +53,7 @@ enum ApprovalStatus {
 enum HistoryEntryType {
   NOTE
   STATUS_CHANGE
+  DEADLINE_CHANGE
 }
 
 // ─── Auth.js v5 adapter models ────────────────────────────────────────────────

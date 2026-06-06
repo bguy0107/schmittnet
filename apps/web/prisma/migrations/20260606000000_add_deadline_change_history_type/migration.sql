@@ -1,0 +1,1 @@
+ALTER TYPE "HistoryEntryType" ADD VALUE 'DEADLINE_CHANGE';

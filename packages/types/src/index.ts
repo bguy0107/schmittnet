@@ -60,7 +60,7 @@ export interface TicketDetail extends TicketSummary {
   pendingApproval: TicketApprovalShape | null;
 }
 
-export type HistoryEntryType = "NOTE" | "STATUS_CHANGE";
+export type HistoryEntryType = "NOTE" | "STATUS_CHANGE" | "DEADLINE_CHANGE";
 
 export interface TicketHistoryEntryShape {
   id: string;

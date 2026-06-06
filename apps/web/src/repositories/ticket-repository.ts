@@ -215,11 +215,39 @@ export const ticketRepository = {
     });
   },
 
-  async updateDeadline(id: string, deadline: Date | null) {
-    return prisma.ticket.update({
-      where: { id },
-      data: { deadline, updatedAt: new Date() },
-      select: { id: true, deadline: true },
+  async updateDeadline(
+    id: string,
+    deadline: Date | null,
+    oldDeadline: Date | null,
+    actorId: string | null,
+  ) {
+    const formatDate = (d: Date) =>
+      d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+    let content: string;
+    if (!deadline) {
+      content = "Deadline cleared";
+    } else if (!oldDeadline) {
+      content = `Deadline set to ${formatDate(deadline)}`;
+    } else {
+      content = `Deadline updated to ${formatDate(deadline)}`;
+    }
+
+    return prisma.$transaction(async (tx) => {
+      const ticket = await tx.ticket.update({
+        where: { id },
+        data: { deadline, updatedAt: new Date() },
+        select: { id: true, deadline: true },
+      });
+      await tx.ticketHistory.create({
+        data: {
+          ticketId: id,
+          authorId: actorId ?? undefined,
+          type: "DEADLINE_CHANGE",
+          content,
+        },
+      });
+      return ticket;
     });
   },
 

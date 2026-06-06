@@ -34,7 +34,7 @@ interface TicketRow {
   assignee: { id: string; name: string } | null;
   history: Array<{
     id: string;
-    type: "NOTE" | "STATUS_CHANGE";
+    type: "NOTE" | "STATUS_CHANGE" | "DEADLINE_CHANGE";
     content: string | null;
     fromStatus: string | null;
     toStatus: string | null;
@@ -645,6 +645,16 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
                       ? `${statusLabel(entry.fromStatus as never)} → ${statusLabel(entry.toStatus as never)}`
                       : "Ticket opened"}
                   </p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">
+                    {entry.author?.name ?? "System"} · {formatDateTime(entry.createdAt)}
+                  </p>
+                </div>
+              </div>
+            ) : entry.type === "DEADLINE_CHANGE" ? (
+              <div key={entry.id} className="flex items-start gap-3">
+                <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-amber-400 dark:bg-amber-500" />
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-200">{entry.content}</p>
                   <p className="text-xs text-gray-400 dark:text-gray-500">
                     {entry.author?.name ?? "System"} · {formatDateTime(entry.createdAt)}
                   </p>

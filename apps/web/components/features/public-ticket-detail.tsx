@@ -14,7 +14,7 @@ import type { BadgeProps } from "@/components/ui/badge";
 
 interface PublicHistoryEntry {
   id: string;
-  type: "NOTE" | "STATUS_CHANGE";
+  type: "NOTE" | "STATUS_CHANGE" | "DEADLINE_CHANGE";
   content: string | null;
   fromStatus: string | null;
   toStatus: string | null;
@@ -385,6 +385,16 @@ export function PublicTicketDetail({ token, ticketId }: Props) {
                     ? `${STATUS_LABELS[entry.fromStatus as keyof typeof STATUS_LABELS] ?? entry.fromStatus} → ${STATUS_LABELS[entry.toStatus as keyof typeof STATUS_LABELS] ?? entry.toStatus}`
                     : "Ticket opened"}
                 </p>
+                <p className="text-xs text-gray-400">
+                  {entry.author?.name ?? "System"} · {formatDate(entry.createdAt)}
+                </p>
+              </div>
+            </div>
+          ) : entry.type === "DEADLINE_CHANGE" ? (
+            <div key={entry.id} className="flex items-start gap-3">
+              <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-amber-400" />
+              <div className="space-y-0.5">
+                <p className="text-sm font-medium text-gray-700">{entry.content}</p>
                 <p className="text-xs text-gray-400">
                   {entry.author?.name ?? "System"} · {formatDate(entry.createdAt)}
                 </p>

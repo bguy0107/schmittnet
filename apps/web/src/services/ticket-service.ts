@@ -407,6 +407,7 @@ export const ticketService = {
     ticketId: string,
     actorRole: Role,
     actorOwnerId: string | null,
+    actorId: string,
     body: unknown,
   ) {
     const { deadline } = z.object({
@@ -426,7 +427,8 @@ export const ticketService = {
       throw new ValidationError("Cannot update deadline on a closed ticket");
     }
 
-    return ticketRepository.updateDeadline(ticketId, deadline ? new Date(deadline) : null);
+    const oldDeadline = ticket.deadline ? new Date(ticket.deadline) : null;
+    return ticketRepository.updateDeadline(ticketId, deadline ? new Date(deadline) : null, oldDeadline, actorId);
   },
 
   async updatePublicDeadline(token: string, ticketId: string, body: unknown) {
@@ -441,7 +443,8 @@ export const ticketService = {
       throw new ValidationError("Cannot update deadline on a closed ticket");
     }
 
-    return ticketRepository.updateDeadline(ticketId, deadline ? new Date(deadline) : null);
+    const oldDeadline = ticket.deadline ? new Date(ticket.deadline) : null;
+    return ticketRepository.updateDeadline(ticketId, deadline ? new Date(deadline) : null, oldDeadline, null);
   },
 
   async getPublicTickets(token: string) {
