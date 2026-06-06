@@ -64,7 +64,7 @@ function ticketHref(status: string, categories: Category[]): string {
 }
 
 export function TechnicianDashboard() {
-  const [preset, setPreset] = useState<Preset>("30d");
+  const [preset, setPreset] = useState<Preset>("all");
   const { from, to } = getDateRange(preset);
   const { data, isLoading, isError } = useTechnicianDashboard(from, to);
 
