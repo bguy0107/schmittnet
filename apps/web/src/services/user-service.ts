@@ -73,9 +73,7 @@ export const userService = {
 
     if (id === actorId) throw new ForbiddenError("Cannot delete your own account");
 
-    const hasData = await userRepository.hasAssociatedData(id);
-    if (hasData) throw new ConflictError("Cannot delete a user with associated tickets or records");
-
+    await userRepository.cleanupBeforeDeletion(id);
     await userRepository.delete(id);
   },
 

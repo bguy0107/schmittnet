@@ -133,6 +133,15 @@ export const userRepository = {
     return tickets + notes + approvalsReq + approvalsAct > 0;
   },
 
+  async cleanupBeforeDeletion(userId: string) {
+    await prisma.$transaction([
+      // requestedBy is non-nullable — must delete these rows or the user delete will fail
+      prisma.ticketApproval.deleteMany({ where: { requestedBy: userId } }),
+      // Clear any remaining ticket assignments (terminal tickets not touched by deactivation)
+      prisma.ticket.updateMany({ where: { assignedTo: userId }, data: { assignedTo: null } }),
+    ]);
+  },
+
   async delete(id: string) {
     await prisma.user.delete({ where: { id } });
   },
