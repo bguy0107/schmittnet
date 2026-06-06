@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { hash } from "@node-rs/argon2";
+import { prisma } from "@/src/lib/prisma";
 import { userRepository } from "@/src/repositories/user-repository";
 import { notificationService } from "@/src/services/notification-service";
 import { ForbiddenError, NotFoundError, ConflictError } from "@/src/lib/errors";
@@ -41,12 +42,18 @@ export const userService = {
 
     const passwordHash = await hash(data.password);
 
+    let ownerId = data.ownerId;
+    if (data.role === "OWNER" && !ownerId) {
+      const owner = await prisma.owner.create({ data: { name: data.name } });
+      ownerId = owner.id;
+    }
+
     const user = await userRepository.create({
       email: data.email,
       name: data.name,
       role: data.role as Role,
       categories: data.categories as never,
-      ownerId: data.ownerId,
+      ownerId,
       passwordHash,
       notificationEmail: data.notificationEmail,
     });
@@ -91,6 +98,14 @@ export const userService = {
 
     if (data.password) {
       updates.passwordHash = await hash(data.password);
+    }
+
+    const effectiveRole = (updates.role ?? existing.role) as Role;
+    const effectiveOwnerId = updates.ownerId !== undefined ? updates.ownerId : existing.ownerId;
+    if (effectiveRole === "OWNER" && !effectiveOwnerId) {
+      const ownerName = updates.name ?? existing.name ?? existing.email;
+      const owner = await prisma.owner.create({ data: { name: ownerName } });
+      updates.ownerId = owner.id;
     }
 
     return userRepository.update(id, updates);
