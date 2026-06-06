@@ -316,6 +316,7 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
           <CardContent className="space-y-3">
             {t.status === "OPEN" && isTech && !t.assignee && (
               <Button
+                size="sm"
                 className="w-full"
                 onClick={handleClaimAndStart}
                 disabled={claimTicket.isPending || updateStatus.isPending}
@@ -416,6 +417,7 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
             {t.status === "ON_HOLD" && isTech && (
               <Button
                 variant="outline"
+                size="sm"
                 className="w-full"
                 onClick={() => updateStatus.mutate({ status: "IN_PROGRESS" })}
                 disabled={updateStatus.isPending}
@@ -426,7 +428,7 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
 
             {t.status === "APPROVED" && isTech && (
               !showResolveForm ? (
-                <Button className="w-full" onClick={() => setShowResolveForm(true)}>
+                <Button size="sm" className="w-full" onClick={() => setShowResolveForm(true)}>
                   Mark Resolved
                 </Button>
               ) : (
