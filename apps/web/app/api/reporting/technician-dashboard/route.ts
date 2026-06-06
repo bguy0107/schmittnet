@@ -45,26 +45,29 @@ export async function GET(req: NextRequest) {
       : {};
 
   try {
-    const where = { assignedTo: userId, ...dateFilter };
+    // Current workload: not date-scoped — a ticket claimed 60 days ago is still active today.
+    const workloadWhere = { assignedTo: userId };
+    // Historical queries (resolved count, avg time, breakdowns) respect the date filter.
+    const historicalWhere = { assignedTo: userId, ...dateFilter };
 
     const [statusCounts, categoryCounts, resolvedTickets, byLocation] = await Promise.all([
       prisma.ticket.groupBy({
         by: ["status"],
-        where,
+        where: workloadWhere,
         _count: { _all: true },
       }),
       prisma.ticket.groupBy({
         by: ["category"],
-        where,
+        where: historicalWhere,
         _count: { _all: true },
       }),
       prisma.ticket.findMany({
-        where: { ...where, status: "RESOLVED", resolvedAt: { not: null } },
+        where: { ...historicalWhere, status: "RESOLVED", resolvedAt: { not: null } },
         select: { createdAt: true, resolvedAt: true },
       }),
       prisma.ticket.groupBy({
         by: ["locationId"],
-        where,
+        where: historicalWhere,
         _count: { _all: true },
         orderBy: { _count: { locationId: "desc" } },
         take: 10,
