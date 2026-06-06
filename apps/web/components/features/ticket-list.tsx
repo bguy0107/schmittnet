@@ -15,6 +15,9 @@ import type { Role, TicketStatus, Category } from "@schmittnet/types";
 interface TicketListProps {
   role: Role;
   ownerId: string | null;
+  initialStatus?: string;
+  initialCategory?: string;
+  initialLocationId?: string;
 }
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
@@ -61,11 +64,11 @@ function categoryLabel(category: string) {
 
 const PAGE_SIZE = 25;
 
-export function TicketList({ role }: TicketListProps) {
+export function TicketList({ role, initialStatus = "", initialCategory = "", initialLocationId = "" }: TicketListProps) {
   void role;
-  const [status, setStatus] = useState("");
-  const [category, setCategory] = useState("");
-  const [locationId, setLocationId] = useState("");
+  const [status, setStatus] = useState(initialStatus);
+  const [category, setCategory] = useState(initialCategory);
+  const [locationId, setLocationId] = useState(initialLocationId);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import type { Route } from "next";
 import { AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,11 +33,12 @@ interface StatCardProps {
   label: string;
   value: number | string;
   accent?: string;
+  href?: string;
 }
 
-function StatCard({ label, value, accent }: StatCardProps) {
-  return (
-    <Card>
+function StatCard({ label, value, accent, href }: StatCardProps) {
+  const card = (
+    <Card className={href ? "transition-shadow hover:shadow-md cursor-pointer" : undefined}>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
       </CardHeader>
@@ -44,6 +47,11 @@ function StatCard({ label, value, accent }: StatCardProps) {
       </CardContent>
     </Card>
   );
+
+  if (href) {
+    return <Link href={href as Route} className="block">{card}</Link>;
+  }
+  return card;
 }
 
 export function TechnicianDashboard() {
@@ -85,13 +93,13 @@ export function TechnicianDashboard() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Open" value={data.open} accent="text-blue-600" />
-        <StatCard label="In Progress" value={data.inProgress} accent="text-yellow-600" />
-        <StatCard label="On Hold" value={data.onHold} accent="text-orange-600" />
-        <StatCard label="Awaiting Approval" value={data.awaitingApproval} accent="text-red-600" />
+        <StatCard label="Open" value={data.open} accent="text-blue-600" href="/tickets?status=OPEN" />
+        <StatCard label="In Progress" value={data.inProgress} accent="text-yellow-600" href="/tickets?status=IN_PROGRESS" />
+        <StatCard label="On Hold" value={data.onHold} accent="text-orange-600" href="/tickets?status=ON_HOLD" />
+        <StatCard label="Awaiting Approval" value={data.awaitingApproval} accent="text-red-600" href="/tickets?status=AWAITING_APPROVAL" />
       </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Resolved" value={data.resolved} accent="text-green-600" />
+        <StatCard label="Resolved" value={data.resolved} accent="text-green-600" href="/tickets?status=RESOLVED" />
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
