@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
+import type { Route } from "next";
 import { AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,11 +33,12 @@ interface StatCardProps {
   label: string;
   value: number | string;
   accent?: string;
+  href?: string;
 }
 
-function StatCard({ label, value, accent }: StatCardProps) {
-  return (
-    <Card>
+function StatCard({ label, value, accent, href }: StatCardProps) {
+  const card = (
+    <Card className={href ? "transition-shadow hover:shadow-md cursor-pointer" : undefined}>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
       </CardHeader>
@@ -44,11 +47,20 @@ function StatCard({ label, value, accent }: StatCardProps) {
       </CardContent>
     </Card>
   );
+
+  if (href) {
+    return <Link href={href as Route} className="block">{card}</Link>;
+  }
+  return card;
+}
+
+function ticketHref(status: string): string {
+  return `/tickets?${new URLSearchParams({ status }).toString()}`;
 }
 
 export function OwnerDashboard({ ownerId }: { ownerId: string | null }) {
   void ownerId;
-  const [preset, setPreset] = useState<Preset>("30d");
+  const [preset, setPreset] = useState<Preset>("all");
   const { from, to } = getDateRange(preset);
   const { data, isLoading, isError } = useDashboard(from, to);
 
@@ -86,15 +98,52 @@ export function OwnerDashboard({ ownerId }: { ownerId: string | null }) {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard label="Open" value={data.open} accent="text-blue-600" />
-        <StatCard label="In Progress" value={data.inProgress} accent="text-yellow-600" />
-        <StatCard label="Awaiting Approval" value={data.awaitingApproval} accent="text-red-600" />
-        <StatCard label="Resolved" value={data.resolved} accent="text-green-600" />
+        <StatCard label="Open" value={data.open} accent="text-blue-600" href={ticketHref("OPEN")} />
+        <StatCard label="In Progress" value={data.inProgress} accent="text-yellow-600" href={ticketHref("IN_PROGRESS")} />
+        <StatCard label="On Hold" value={data.onHold} accent="text-orange-600" href={ticketHref("ON_HOLD")} />
+        <StatCard label="Awaiting Approval" value={data.awaitingApproval} accent="text-red-600" href={ticketHref("AWAITING_APPROVAL")} />
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatCard label="Resolved" value={data.resolved} accent="text-green-600" href={ticketHref("RESOLVED")} />
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <StatCard label="Avg. Resolution Time" value={avgHours} />
       </div>
+
+      {/* By category */}
+      {data.ticketsByCategory.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Tickets by category</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {data.ticketsByCategory.map(({ category, count }) => {
+              const max = Math.max(...data.ticketsByCategory.map((c) => c.count), 1);
+              const pct = Math.round((count / max) * 100);
+              return (
+                <div key={category}>
+                  <div className="mb-1 flex justify-between text-sm">
+                    <span className="font-medium text-gray-700 dark:text-gray-200">{category}</span>
+                    <span className="text-gray-500 dark:text-gray-400">{count}</span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+                    <div
+                      className="h-2 rounded-full bg-primary"
+                      style={{ width: `${pct}%` }}
+                      role="progressbar"
+                      aria-valuenow={pct}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-label={`${category}: ${count} tickets`}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       {/* By location */}
       {data.ticketsByLocation.length > 0 && (

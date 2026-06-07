@@ -58,9 +58,14 @@ export async function GET(req: NextRequest) {
       ...dateFilter,
     };
 
-    const [statusCounts, resolvedTickets, byLocation] = await Promise.all([
+    const [statusCounts, categoryCounts, resolvedTickets, byLocation] = await Promise.all([
       prisma.ticket.groupBy({
         by: ["status"],
+        where,
+        _count: { _all: true },
+      }),
+      prisma.ticket.groupBy({
+        by: ["category"],
         where,
         _count: { _all: true },
       }),
@@ -97,9 +102,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       open: countByStatus["OPEN"] ?? 0,
       inProgress: countByStatus["IN_PROGRESS"] ?? 0,
+      onHold: countByStatus["ON_HOLD"] ?? 0,
       awaitingApproval: countByStatus["AWAITING_APPROVAL"] ?? 0,
       resolved: countByStatus["RESOLVED"] ?? 0,
       avgResolutionHours: avgResolutionMs ? avgResolutionMs / 1000 / 60 / 60 : null,
+      ticketsByCategory: categoryCounts.map((c: { category: string; _count: { _all: number } }) => ({
+        category: c.category,
+        count: c._count._all,
+      })),
       ticketsByLocation: byLocation.map((r: { locationId: string; _count: { _all: number } }) => ({
         locationName: nameMap[r.locationId] ?? r.locationId,
         count: r._count._all,

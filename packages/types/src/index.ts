@@ -114,9 +114,11 @@ export interface LocationContext {
 export interface DashboardStats {
   open: number;
   inProgress: number;
+  onHold: number;
   awaitingApproval: number;
   resolved: number;
   avgResolutionHours: number | null;
+  ticketsByCategory: Array<{ category: Category; count: number }>;
   ticketsByLocation: Array<{ locationName: string; count: number }>;
 }
 
