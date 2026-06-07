@@ -16,7 +16,9 @@ const MAX_BYTES = 100 * 1024 * 1024;
 
 const schema = z.object({
   locationId: z.string().min(1, "Select a location"),
-  category: z.enum(["IT", "MAINTENANCE"], { required_error: "Select a category" }),
+  category: z.enum(["IT", "MAINTENANCE"], {
+    errorMap: () => ({ message: "You must select a ticket category before submitting" }),
+  }),
   description: z.string().min(10, "Describe the issue in at least 10 characters").max(2000),
   deadline: z.string().optional(),
 });
