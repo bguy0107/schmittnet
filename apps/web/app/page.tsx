@@ -13,6 +13,6 @@ export default async function RootPage() {
     case "OWNER_STAFF":
       redirect("/owner");
     default:
-      redirect("/tickets");
+      redirect("/technician");
   }
 }

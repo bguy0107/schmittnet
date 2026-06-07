@@ -22,7 +22,7 @@ type FormData = z.infer<typeof schema>;
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/tickets";
+  const callbackUrl = searchParams.get("callbackUrl") ?? "/";
 
   const [serverError, setServerError] = useState<string | null>(null);
 
