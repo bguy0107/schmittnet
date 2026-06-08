@@ -56,29 +56,12 @@ enum HistoryEntryType {
   DEADLINE_CHANGE
 }
 
-// ─── Auth.js v5 adapter models ────────────────────────────────────────────────
+// ─── Sessions (ADR-006) ───────────────────────────────────────────────────────
 
-// Included for OAuth extensibility; not used by Credentials provider in v1.
-model Account {
-  id                String  @id @default(uuid())
-  userId            String  @map("user_id")
-  type              String
-  provider          String
-  providerAccountId String  @map("provider_account_id")
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
-  @@map("accounts")
-}
-
+// Server-side sessions: an opaque random token lives in an HttpOnly cookie, and
+// only its SHA-256 hash is stored here as `sessionToken` — a DB read alone can't
+// forge or replay a session. Deleting the row revokes it instantly (see
+// src/lib/session.ts), unlike a JWT which stays valid until it expires.
 model Session {
   id           String   @id @default(uuid())
   sessionToken String   @unique @map("session_token")
@@ -90,15 +73,6 @@ model Session {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("sessions")
-}
-
-model VerificationToken {
-  identifier String
-  token      String
-  expires    DateTime
-
-  @@id([identifier, token])
-  @@map("verification_tokens")
 }
 
 // ─── Application models ───────────────────────────────────────────────────────
@@ -117,8 +91,9 @@ model Owner {
 model User {
   id                  String     @id @default(uuid())
   email               String     @unique
-  // Auth.js adapter requires name + emailVerified nullable
   name                String?
+  // emailVerified/image are vestigial from the removed Auth.js adapter — unused,
+  // kept nullable so dropping them later needs no backfill.
   emailVerified       DateTime?  @map("email_verified")
   image               String?
   role                Role
@@ -132,7 +107,6 @@ model User {
   updatedAt           DateTime   @updatedAt @map("updated_at")
 
   owner              Owner?           @relation(fields: [ownerId], references: [id])
-  accounts           Account[]
   sessions           Session[]
   assignedTickets    Ticket[]         @relation("AssignedTechnician")
   history            TicketHistory[]

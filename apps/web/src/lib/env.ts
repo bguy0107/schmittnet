@@ -23,8 +23,6 @@ const envSchema = z.object({
   // Must match whatever is reverse-proxied to minio:9000 (e.g. Caddy /storage).
   MINIO_PUBLIC_URL: z.string().url(),
 
-  AUTH_SECRET: z.string().min(32),
-
   APP_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
 
   GMAIL_USER: z.preprocess(emptyToUndefined, z.string().email().optional()),

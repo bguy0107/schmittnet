@@ -21,7 +21,8 @@ Read with: `extract-text docs/<file>.docx` (or `pandoc <file>.docx -o -`).
 
 Next.js 16 (App Router, web + API routes) · TypeScript strict · Tailwind + shadcn/ui ·
 TanStack Query · React Hook Form + Zod · Prisma 5 + PostgreSQL 18 · BullMQ + Redis 7 ·
-MinIO (S3-compatible) · Auth.js v5 (Credentials, server-side sessions) · Docker Compose +
+MinIO (S3-compatible) · Custom server-side sessions (argon2 + opaque token in HttpOnly
+cookie, hash stored in Postgres — see `auth.ts`/`src/lib/session.ts`) · Docker Compose +
 Caddy on a single VPS. Monorepo; app lives in `apps/web`.
 
 ## Key commands
@@ -64,8 +65,12 @@ Deploy is automatic on push to `main` (GitHub Actions → SSH → `docker compos
   (CVE-2025-29927); treat it as a convenience filter only.
 - **Owner data isolation at the DB query level** via `owner_id` scoping — never UI-only. This
   prevents cross-owner leakage and is the highest-severity risk in the PRD.
-- **Sessions are server-side** (Postgres, opaque HttpOnly cookie), not stateless JWT — required
-  for instant revocation on logout/role change/deactivation (ADR-006).
+- **Sessions are server-side** (Postgres `sessions` table, opaque HttpOnly cookie), not
+  stateless JWT — required for instant revocation on logout/role change/deactivation
+  (ADR-006). Auth.js v5 hard-codes JWT-only sessions for the Credentials provider
+  (`UnsupportedStrategy` if you try `database` strategy), so this is a small custom layer
+  (`auth.ts` + `src/lib/session.ts` + `session-repository.ts`), not Auth.js — don't
+  reintroduce `next-auth` for this.
 - **No hard deletes.** Users/locations soft-disable via `is_active`. **Exception:** SUPER_ADMIN
   may permanently purge tickets in terminal states (`RESOLVED`/`CANCELLED`) — and their history,
   approvals, and media — via the admin Danger Zone (`POST /api/tickets/cleanup`). This is the
@@ -96,5 +101,3 @@ Maintenance, or both; optionally owner-scoped).
 ## Notes
 
 - Mobile-first is the primary use case — design and test at mobile viewport first.
-- Auth.js v5 is still beta: pin a release and validate Credentials + server-side sessions +
-  Next.js 16 `proxy.ts` early (PRD Q3 / arch Q8).

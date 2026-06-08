@@ -9,9 +9,7 @@ vi.mock("next/navigation", () => ({
   redirect: vi.fn(),
 }));
 
-// Stub Auth.js so service tests can run without a real session.
+// Stub session lookup so service/route tests can run without a real session.
 vi.mock("@/auth", () => ({
   auth: vi.fn().mockResolvedValue(null),
-  signIn: vi.fn(),
-  signOut: vi.fn(),
 }));

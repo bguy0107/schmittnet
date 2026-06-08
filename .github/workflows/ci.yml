@@ -40,7 +40,6 @@ jobs:
       NODE_ENV: test
       DATABASE_URL: postgresql://schmittnet:schmittnet@localhost:5432/schmittnet_test
       REDIS_URL: redis://localhost:6379
-      AUTH_SECRET: ci-test-secret-that-is-at-least-32-characters
       MINIO_ENDPOINT: localhost
       MINIO_PORT: 9000
       MINIO_USE_SSL: "false"

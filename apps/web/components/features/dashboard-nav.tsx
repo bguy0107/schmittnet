@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { useRouter, usePathname } from "next/navigation";
 import { LogOut, Menu, Ticket, BarChart2, Settings, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -66,8 +65,16 @@ function navLinkClasses(active: boolean): string {
 }
 
 export function DashboardNav({ user }: DashboardNavProps) {
+  const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+
+  async function handleSignOut() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
+  }
+
 
   // Close the sidebar whenever the route changes (e.g. after tapping a link).
   // Adjusting state during render — rather than in an effect — avoids an extra commit.
@@ -115,7 +122,7 @@ export function DashboardNav({ user }: DashboardNavProps) {
                 variant="ghost"
                 size="icon"
                 aria-label="Sign out"
-                onClick={() => signOut({ callbackUrl: "/login" })}
+                onClick={() => void handleSignOut()}
               >
                 <LogOut className="h-4 w-4" />
               </Button>
