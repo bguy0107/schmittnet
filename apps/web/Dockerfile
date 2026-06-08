@@ -19,6 +19,9 @@ COPY . .
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
+# Cap the build's heap so it fails fast with an OOM error on small VPS hosts
+# instead of swapping until the build appears to hang indefinitely.
+ENV NODE_OPTIONS=--max-old-space-size=1024
 
 RUN npx prisma generate --schema=apps/web/prisma/schema.prisma
 RUN npm run build --workspace=apps/web
