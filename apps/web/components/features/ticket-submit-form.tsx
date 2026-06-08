@@ -163,7 +163,7 @@ export function TicketSubmitForm({ token }: { token: string }) {
 
       {/* Deadline */}
       <div className="space-y-1.5">
-        <Label htmlFor="deadline">Completion deadline <span className="text-gray-400">(optional)</span></Label>
+        <Label htmlFor="deadline">Completion deadline <span className="text-gray-400 dark:text-gray-500">(optional)</span></Label>
         <input
           id="deadline"
           type="date"

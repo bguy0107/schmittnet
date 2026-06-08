@@ -172,7 +172,7 @@ export function PublicTicketDetail({ token, ticketId }: Props) {
     setMediaFile(file);
   }
 
-  if (isLoading) return <div className="py-16 text-center text-sm text-gray-500">Loading…</div>;
+  if (isLoading) return <div className="py-16 text-center text-sm text-gray-500 dark:text-gray-400">Loading…</div>;
   if (isError || !data) {
     return (
       <Alert variant="destructive">
@@ -186,10 +186,10 @@ export function PublicTicketDetail({ token, ticketId }: Props) {
 
   if (cancelMutation.isSuccess) {
     return (
-      <div className="rounded-lg bg-white p-8 text-center shadow-sm">
+      <div className="rounded-lg bg-white p-8 text-center shadow-sm dark:bg-gray-900">
         <CheckCircle2 className="mx-auto mb-4 h-12 w-12 text-green-500" aria-hidden="true" />
-        <h2 className="text-lg font-semibold text-gray-900">Ticket cancelled</h2>
-        <p className="mt-1 text-sm text-gray-500">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Ticket cancelled</h2>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Reference <strong className="font-mono">{t.id.slice(0, 8).toUpperCase()}</strong> has been cancelled.
         </p>
       </div>
@@ -199,51 +199,51 @@ export function PublicTicketDetail({ token, ticketId }: Props) {
   return (
     <div className="space-y-4">
       {/* Header card */}
-      <div className="rounded-lg border border-gray-100 bg-white p-5 shadow-sm">
+      <div className="rounded-lg border border-gray-100 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
         <div className="flex flex-wrap items-center gap-2">
           {t.priority === "P0" && <span aria-label="Service-impacting">🚨</span>}
-          <span className="font-mono text-xs text-gray-400">#{t.id.slice(0, 8).toUpperCase()}</span>
+          <span className="font-mono text-xs text-gray-400 dark:text-gray-500">#{t.id.slice(0, 8).toUpperCase()}</span>
           <Badge variant={STATUS_VARIANT[t.status]}>{STATUS_LABELS[t.status]}</Badge>
           <Badge variant="outline">{t.category === "IT" ? "🖥️ IT" : "🔧 Maintenance"}</Badge>
         </div>
 
-        <p className="mt-3 text-sm leading-relaxed text-gray-800">{t.description}</p>
+        <p className="mt-3 text-sm leading-relaxed text-gray-800 dark:text-gray-100">{t.description}</p>
 
         <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
           <div>
-            <dt className="font-medium uppercase tracking-wide text-gray-400">Location</dt>
-            <dd className="mt-0.5 text-gray-700">📍 {t.location.name}</dd>
+            <dt className="font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Location</dt>
+            <dd className="mt-0.5 text-gray-700 dark:text-gray-300">📍 {t.location.name}</dd>
           </div>
           <div>
-            <dt className="font-medium uppercase tracking-wide text-gray-400">Opened</dt>
-            <dd className="mt-0.5 text-gray-500">{formatDate(t.createdAt)}</dd>
+            <dt className="font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Opened</dt>
+            <dd className="mt-0.5 text-gray-500 dark:text-gray-400">{formatDate(t.createdAt)}</dd>
           </div>
           {t.deadline && (
             <div>
-              <dt className="font-medium uppercase tracking-wide text-gray-400">Deadline</dt>
-              <dd className="mt-0.5 text-gray-500">{new Date(t.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</dd>
+              <dt className="font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Deadline</dt>
+              <dd className="mt-0.5 text-gray-500 dark:text-gray-400">{new Date(t.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</dd>
             </div>
           )}
           {t.resolvedAt && (
             <div>
-              <dt className="font-medium uppercase tracking-wide text-gray-400">Resolved</dt>
-              <dd className="mt-0.5 text-gray-500">{formatDate(t.resolvedAt)}</dd>
+              <dt className="font-medium uppercase tracking-wide text-gray-400 dark:text-gray-500">Resolved</dt>
+              <dd className="mt-0.5 text-gray-500 dark:text-gray-400">{formatDate(t.resolvedAt)}</dd>
             </div>
           )}
         </dl>
 
         {t.onHoldReason && (
-          <div className="mt-3 rounded-md bg-yellow-50 px-3 py-2 text-sm">
-            <span className="font-medium text-yellow-800">On hold: </span>
-            <span className="text-yellow-700">{t.onHoldReason}</span>
+          <div className="mt-3 rounded-md bg-yellow-50 px-3 py-2 text-sm dark:bg-yellow-900/20">
+            <span className="font-medium text-yellow-800 dark:text-yellow-300">On hold: </span>
+            <span className="text-yellow-700 dark:text-yellow-400">{t.onHoldReason}</span>
           </div>
         )}
       </div>
 
       {/* Media */}
       {t.media.length > 0 && (
-        <div className="rounded-lg border border-gray-100 bg-white p-4 shadow-sm">
-          <p className="mb-3 text-sm font-medium text-gray-700">Attachments ({t.media.length})</p>
+        <div className="rounded-lg border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900">
+          <p className="mb-3 text-sm font-medium text-gray-700 dark:text-gray-200">Attachments ({t.media.length})</p>
           <div className="flex flex-wrap gap-2">
             {t.media.map((m) => (
               <a
@@ -251,7 +251,7 @@ export function PublicTicketDetail({ token, ticketId }: Props) {
                 href={m.signedUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group relative flex h-20 w-20 shrink-0 overflow-hidden rounded-md border bg-gray-50"
+                className="group relative flex h-20 w-20 shrink-0 overflow-hidden rounded-md border bg-gray-50 dark:border-gray-800 dark:bg-gray-800"
               >
                 {m.mediaType === "VIDEO" ? (
                   <>
@@ -272,8 +272,8 @@ export function PublicTicketDetail({ token, ticketId }: Props) {
 
       {/* Actions */}
       {!isTerminal && (
-        <div className="rounded-lg border border-gray-100 bg-white p-4 shadow-sm space-y-3">
-          <p className="text-sm font-medium text-gray-700">Actions</p>
+        <div className="rounded-lg border border-gray-100 bg-white p-4 shadow-sm space-y-3 dark:border-gray-800 dark:bg-gray-900">
+          <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Actions</p>
 
           {/* Deadline */}
           {!showDeadline ? (
@@ -327,20 +327,20 @@ export function PublicTicketDetail({ token, ticketId }: Props) {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-red-200 text-red-600 hover:border-red-400 hover:bg-red-50"
+                  className="border-red-200 text-red-600 hover:border-red-400 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:border-red-700 dark:hover:bg-red-950/30"
                   onClick={() => setShowCancel(true)}
                 >
                   Cancel ticket
                 </Button>
               ) : (
-                <div className="space-y-2 rounded-md border border-red-100 bg-red-50 p-3">
-                  <p className="text-sm font-medium text-red-800">Cancel this ticket?</p>
+                <div className="space-y-2 rounded-md border border-red-100 bg-red-50 p-3 dark:border-red-900/60 dark:bg-red-950/20">
+                  <p className="text-sm font-medium text-red-800 dark:text-red-300">Cancel this ticket?</p>
                   <Textarea
                     placeholder="Reason for cancellation (required)…"
                     value={cancelReason}
                     onChange={(e) => setCancelReason(e.target.value)}
                     rows={2}
-                    className="bg-white"
+                    className="bg-white dark:bg-gray-900"
                   />
                   <div className="flex gap-2">
                     <Button
@@ -366,50 +366,50 @@ export function PublicTicketDetail({ token, ticketId }: Props) {
       )}
 
       {/* History */}
-      <div className="rounded-lg border border-gray-100 bg-white p-4 shadow-sm space-y-4">
-        <p className="text-sm font-medium text-gray-700">
+      <div className="rounded-lg border border-gray-100 bg-white p-4 shadow-sm space-y-4 dark:border-gray-800 dark:bg-gray-900">
+        <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
           History{t.history.length > 0 ? ` (${t.history.length})` : ""}
         </p>
 
         {t.history.length === 0 && (
-          <p className="text-sm text-gray-400">No history yet.</p>
+          <p className="text-sm text-gray-400 dark:text-gray-500">No history yet.</p>
         )}
 
         {[...t.history].reverse().map((entry) =>
           entry.type === "STATUS_CHANGE" ? (
             <div key={entry.id} className="flex items-start gap-3">
-              <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-blue-400" />
+              <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-blue-400 dark:bg-blue-500" />
               <div className="space-y-0.5">
-                <p className="text-sm font-medium text-gray-700">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
                   {entry.fromStatus
                     ? `${STATUS_LABELS[entry.fromStatus as keyof typeof STATUS_LABELS] ?? entry.fromStatus} → ${STATUS_LABELS[entry.toStatus as keyof typeof STATUS_LABELS] ?? entry.toStatus}`
                     : "Ticket opened"}
                 </p>
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-gray-400 dark:text-gray-500">
                   {entry.author?.name ?? "System"} · {formatDate(entry.createdAt)}
                 </p>
               </div>
             </div>
           ) : entry.type === "DEADLINE_CHANGE" ? (
             <div key={entry.id} className="flex items-start gap-3">
-              <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-amber-400" />
+              <div className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-amber-400 dark:bg-amber-500" />
               <div className="space-y-0.5">
-                <p className="text-sm font-medium text-gray-700">{entry.content}</p>
-                <p className="text-xs text-gray-400">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-200">{entry.content}</p>
+                <p className="text-xs text-gray-400 dark:text-gray-500">
                   {entry.author?.name ?? "System"} · {formatDate(entry.createdAt)}
                 </p>
               </div>
             </div>
           ) : (
             <div key={entry.id} className="space-y-1">
-              <div className="flex items-center gap-2 text-xs text-gray-400">
-                <span className="font-medium text-gray-600">
+              <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
+                <span className="font-medium text-gray-600 dark:text-gray-300">
                   {entry.author?.name ?? "Staff"}
                 </span>
                 <span>·</span>
                 <span>{formatDate(entry.createdAt)}</span>
               </div>
-              <p className="text-sm text-gray-700">{entry.content}</p>
+              <p className="text-sm text-gray-700 dark:text-gray-200">{entry.content}</p>
             </div>
           )
         )}
@@ -427,13 +427,13 @@ export function PublicTicketDetail({ token, ticketId }: Props) {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="flex w-full cursor-pointer flex-col items-center justify-center gap-1.5 rounded-md border-2 border-dashed border-gray-300 bg-gray-50 py-4 text-sm text-gray-500 transition-colors hover:border-primary hover:bg-primary/5"
+              className="flex w-full cursor-pointer flex-col items-center justify-center gap-1.5 rounded-md border-2 border-dashed border-gray-300 bg-gray-50 py-4 text-sm text-gray-500 transition-colors hover:border-primary hover:bg-primary/5 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400"
             >
               {mediaFile ? (
                 <>
                   <Camera className="h-5 w-5 text-green-500" />
-                  <span className="font-medium text-gray-700">{mediaFile.name}</span>
-                  <span className="text-xs text-gray-400">{(mediaFile.size / 1024 / 1024).toFixed(1)} MB — tap to change</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-200">{mediaFile.name}</span>
+                  <span className="text-xs text-gray-400 dark:text-gray-500">{(mediaFile.size / 1024 / 1024).toFixed(1)} MB — tap to change</span>
                 </>
               ) : (
                 <>

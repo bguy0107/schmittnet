@@ -41,9 +41,9 @@ export function MediaUploadList({
               className="group relative aspect-square overflow-hidden rounded-md border border-gray-200 bg-gray-100 dark:border-gray-700 dark:bg-gray-800"
             >
               {item.file.type.startsWith("video/") ? (
-                <div className="flex h-full w-full flex-col items-center justify-center gap-1 p-1 text-gray-400">
+                <div className="flex h-full w-full flex-col items-center justify-center gap-1 p-1 text-gray-400 dark:text-gray-500">
                   <FileVideo className="h-6 w-6" />
-                  <span className="line-clamp-2 text-center text-[10px] leading-tight text-gray-500">{item.file.name}</span>
+                  <span className="line-clamp-2 text-center text-[10px] leading-tight text-gray-500 dark:text-gray-400">{item.file.name}</span>
                 </div>
               ) : (
                 <img src={item.previewUrl} alt="" className="h-full w-full object-cover" />
@@ -87,7 +87,7 @@ export function MediaUploadList({
         >
           {items.length > 0 ? <Plus className="h-6 w-6" /> : <Upload className="h-6 w-6" />}
           <span>{items.length > 0 ? "Add more" : addLabel}</span>
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-gray-400 dark:text-gray-500">
             JPEG, PNG, HEIC, MP4, MOV — up to {maxFiles}, max 100 MB each
           </span>
         </button>

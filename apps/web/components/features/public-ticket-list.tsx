@@ -56,12 +56,12 @@ export function PublicTicketList({ token }: { token: string }) {
   });
 
   if (isLoading) {
-    return <div className="py-12 text-center text-sm text-gray-500">Loading…</div>;
+    return <div className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">Loading…</div>;
   }
 
   if (isError || !data) {
     return (
-      <div className="py-12 text-center text-sm text-gray-500">
+      <div className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">
         Unable to load tickets. This QR code may no longer be active.
       </div>
     );
@@ -69,12 +69,12 @@ export function PublicTicketList({ token }: { token: string }) {
 
   return (
     <div className="space-y-3">
-      <div className="rounded-md bg-gray-100 px-4 py-2.5 text-sm font-medium text-gray-700">
+      <div className="rounded-md bg-gray-100 px-4 py-2.5 text-sm font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-200">
         📍 {data.locationName}
       </div>
 
       {data.tickets.length === 0 ? (
-        <div className="py-12 text-center text-sm text-gray-500">
+        <div className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">
           No active tickets for this location.
         </div>
       ) : (
@@ -82,24 +82,24 @@ export function PublicTicketList({ token }: { token: string }) {
           <Link
             key={ticket.id}
             href={`/submit/${token}/tickets/${ticket.id}`}
-            className="flex items-center gap-3 rounded-lg border border-gray-100 bg-white p-4 shadow-sm transition-colors hover:border-primary"
+            className="flex items-center gap-3 rounded-lg border border-gray-100 bg-white p-4 shadow-sm transition-colors hover:border-primary dark:border-gray-800 dark:bg-gray-900"
           >
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-medium text-gray-400">
+                <span className="font-mono text-xs font-medium text-gray-400 dark:text-gray-500">
                   #{ticket.referenceCode}
                 </span>
                 <Badge variant={STATUS_VARIANT[ticket.status] ?? "outline"}>
                   {STATUS_LABELS[ticket.status] ?? ticket.status}
                 </Badge>
               </div>
-              <p className="mt-1.5 line-clamp-2 text-sm text-gray-800">{ticket.description}</p>
-              <div className="mt-1.5 flex items-center gap-3 text-xs text-gray-400">
+              <p className="mt-1.5 line-clamp-2 text-sm text-gray-800 dark:text-gray-100">{ticket.description}</p>
+              <div className="mt-1.5 flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
                 <span>{ticket.category === "IT" ? "🖥️ IT" : "🔧 Maintenance"}</span>
                 <span>{relativeTime(ticket.createdAt)}</span>
               </div>
             </div>
-            <ChevronRight className="h-4 w-4 shrink-0 text-gray-300" aria-hidden="true" />
+            <ChevronRight className="h-4 w-4 shrink-0 text-gray-300 dark:text-gray-600" aria-hidden="true" />
           </Link>
         ))
       )}
