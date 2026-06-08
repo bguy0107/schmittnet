@@ -177,16 +177,6 @@ async function processJob(
     const body = isApproval
       ? `Ticket #${ref} at ${ticket.location.name} is awaiting budget approval.`
       : `Ticket #${ref} at ${ticket.location.name} has been resolved.`;
-    const dEmbed = makeEmbed({
-      title: isApproval ? `💰 Approval Required` : `✅ Ticket Resolved`,
-      url: ticketUrl(data.ticketId),
-      color: isApproval ? 0xffa500 : 0x57f287,
-      fields: [
-        { name: "Location", value: ticket.location.name },
-        { name: "Issue", value: truncate(ticket.description) },
-        { name: "Reference", value: `#${ref}` },
-      ],
-    });
 
     await notifyUsers(staff, subject, body, emailTransport);
   }

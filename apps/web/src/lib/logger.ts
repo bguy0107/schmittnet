@@ -1,3 +1,5 @@
+/* eslint-disable no-console -- this module is the console-wrapping log sink itself */
+
 type LogLevel = "debug" | "info" | "warn" | "error";
 
 interface LogFields {

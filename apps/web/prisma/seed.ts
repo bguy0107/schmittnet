@@ -1,3 +1,5 @@
+/* eslint-disable no-console -- CLI seed script; output is meant for the terminal, not app logs */
+
 import {
   PrismaClient,
   Role,

@@ -2,15 +2,16 @@
 
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
+
+const noopSubscribe = () => () => {};
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  // Avoid rendering until mounted so resolvedTheme is accurate
-  useEffect(() => setMounted(true), []);
+  // Server renders `false`; client flips to `true` after hydration, so
+  // `resolvedTheme` is only trusted once we're guaranteed to be on the client.
+  const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
 
   if (!mounted) return <div className="h-11 w-11" />;
 

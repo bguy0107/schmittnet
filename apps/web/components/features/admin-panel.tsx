@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, QrCode, Trash2 } from "lucide-react";
@@ -65,7 +65,7 @@ function EditUserPanel({
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     formState: { errors },
   } = useForm<EditUserData>({
     resolver: zodResolver(editUserSchema),
@@ -78,7 +78,7 @@ function EditUserPanel({
     },
   });
 
-  const watchedRole = watch("role");
+  const watchedRole = useWatch({ control, name: "role" });
   const showCategories = watchedRole === "TECHNICIAN";
   const showOwnerScope = watchedRole === "TECHNICIAN" || watchedRole === "OWNER_STAFF";
 
@@ -923,12 +923,15 @@ function DiscordSettingsTab() {
   const [roles, setRoles] = useState({ IT: "", MAINTENANCE: "" });
   const [saved, setSaved] = useState<DiscordSavedKey | null>(null);
 
-  useEffect(() => {
-    if (settings) {
-      setWebhooks({ IT: settings.IT ?? "", MAINTENANCE: settings.MAINTENANCE ?? "" });
-      setRoles({ IT: settings.ROLE_IT ?? "", MAINTENANCE: settings.ROLE_MAINTENANCE ?? "" });
-    }
-  }, [settings]);
+  // Re-seed the editable fields whenever fresh settings arrive (initial load or
+  // post-save refetch). Adjusting state during render — rather than in an effect —
+  // avoids an extra commit; see https://react.dev/learn/you-might-not-need-an-effect
+  const [syncedSettings, setSyncedSettings] = useState(settings);
+  if (settings && settings !== syncedSettings) {
+    setSyncedSettings(settings);
+    setWebhooks({ IT: settings.IT ?? "", MAINTENANCE: settings.MAINTENANCE ?? "" });
+    setRoles({ IT: settings.ROLE_IT ?? "", MAINTENANCE: settings.ROLE_MAINTENANCE ?? "" });
+  }
 
   function handleSaveWebhook(category: "IT" | "MAINTENANCE") {
     const key: DiscordSavedKey = `${category}_webhook`;

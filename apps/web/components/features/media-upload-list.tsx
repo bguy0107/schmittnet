@@ -46,6 +46,8 @@ export function MediaUploadList({
                   <span className="line-clamp-2 text-center text-[10px] leading-tight text-gray-500 dark:text-gray-400">{item.file.name}</span>
                 </div>
               ) : (
+                // previewUrl is a local blob: object URL (URL.createObjectURL) — next/image can't optimize those.
+                // eslint-disable-next-line @next/next/no-img-element
                 <img src={item.previewUrl} alt="" className="h-full w-full object-cover" />
               )}
 

@@ -3,7 +3,7 @@ import { ticketService } from "./ticket-service";
 import { locationRepository } from "@/src/repositories/location-repository";
 import { ticketRepository } from "@/src/repositories/ticket-repository";
 import { deleteObjects } from "@/src/lib/minio";
-import { NotFoundError, ValidationError, ForbiddenError } from "@/src/lib/errors";
+import { NotFoundError, ForbiddenError } from "@/src/lib/errors";
 
 vi.mock("@/src/repositories/location-repository");
 vi.mock("@/src/repositories/ticket-repository");

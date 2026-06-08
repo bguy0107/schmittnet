@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
@@ -70,7 +70,12 @@ export function DashboardNav({ user }: DashboardNavProps) {
   const [open, setOpen] = useState(false);
 
   // Close the sidebar whenever the route changes (e.g. after tapping a link).
-  useEffect(() => setOpen(false), [pathname]);
+  // Adjusting state during render — rather than in an effect — avoids an extra commit.
+  const [renderedPathname, setRenderedPathname] = useState(pathname);
+  if (pathname !== renderedPathname) {
+    setRenderedPathname(pathname);
+    setOpen(false);
+  }
 
   const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(user.role));
 
