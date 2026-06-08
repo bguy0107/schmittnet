@@ -379,4 +379,31 @@ export const ticketRepository = {
       select: { id: true },
     });
   },
+
+  async countByStatuses(statuses: TicketStatus[]) {
+    return prisma.ticket.count({ where: { status: { in: statuses } } });
+  },
+
+  // Permanently removes tickets in the given (terminal) statuses along with their
+  // history, approvals, and media rows. Returns the media storage keys so the
+  // caller can also remove the underlying objects from MinIO.
+  async purgeByStatuses(statuses: TicketStatus[]) {
+    const targets = await prisma.ticket.findMany({
+      where: { status: { in: statuses } },
+      select: { id: true, media: { select: { storageKey: true } } },
+    });
+    const ticketIds = targets.map((t) => t.id);
+    const storageKeys = targets.flatMap((t) => t.media.map((m) => m.storageKey));
+
+    if (ticketIds.length > 0) {
+      await prisma.$transaction([
+        prisma.ticketHistory.deleteMany({ where: { ticketId: { in: ticketIds } } }),
+        prisma.ticketApproval.deleteMany({ where: { ticketId: { in: ticketIds } } }),
+        prisma.ticketMedia.deleteMany({ where: { ticketId: { in: ticketIds } } }),
+        prisma.ticket.deleteMany({ where: { id: { in: ticketIds } } }),
+      ]);
+    }
+
+    return { count: ticketIds.length, storageKeys };
+  },
 };

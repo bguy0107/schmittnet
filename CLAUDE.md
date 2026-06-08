@@ -66,7 +66,11 @@ Deploy is automatic on push to `main` (GitHub Actions → SSH → `docker compos
   prevents cross-owner leakage and is the highest-severity risk in the PRD.
 - **Sessions are server-side** (Postgres, opaque HttpOnly cookie), not stateless JWT — required
   for instant revocation on logout/role change/deactivation (ADR-006).
-- **No hard deletes.** Users/locations soft-disable via `is_active`; tickets are never deleted.
+- **No hard deletes.** Users/locations soft-disable via `is_active`. **Exception:** SUPER_ADMIN
+  may permanently purge tickets in terminal states (`RESOLVED`/`CANCELLED`) — and their history,
+  approvals, and media — via the admin Danger Zone (`POST /api/tickets/cleanup`). This is the
+  only ticket hard-delete path; it is irreversible and destroys the audit trail for those
+  tickets, so keep it gated to SUPER_ADMIN and logged.
 - **QR tokens** are crypto-random (32 bytes hex), never sequential. Public submission endpoint
   is rate-limited **per-token (primary) + per-IP (secondary)** — staff share NAT IPs.
 - **Media uploads** go via short-lived presigned PUT URLs straight to MinIO (ADR-008) — never

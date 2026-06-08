@@ -10,9 +10,9 @@ import {
   ValidationError,
 } from "@/src/lib/errors";
 import { logger } from "@/src/lib/logger";
-import { getSignedReadUrl } from "@/src/lib/minio";
+import { getSignedReadUrl, deleteObjects } from "@/src/lib/minio";
 import { notificationService } from "./notification-service";
-import type { Role, Category } from "@schmittnet/types";
+import type { Role, Category, TicketStatus } from "@schmittnet/types";
 
 const MEDIA_MIME_TYPES_BY_EXTENSION: Record<string, string> = {
   jpeg: "image/jpeg",
@@ -68,6 +68,8 @@ const ALLOWED_TRANSITIONS: Partial<Record<string, readonly string[]>> = {
   RESOLVED:           [],
   CANCELLED:          [],
 };
+
+const PURGEABLE_STATUSES: TicketStatus[] = ["RESOLVED", "CANCELLED"];
 
 export const ticketService = {
   async getLocationContext(token: string) {
@@ -518,6 +520,32 @@ export const ticketService = {
     if (ticket.assignee) throw new ConflictError("Ticket is already assigned");
 
     return ticketRepository.assign(ticketId, actorId);
+  },
+
+  async getCleanupPreview(actorRole: Role) {
+    if (actorRole !== "SUPER_ADMIN") throw new ForbiddenError("Super-admin access required");
+    const count = await ticketRepository.countByStatuses(PURGEABLE_STATUSES);
+    return { count };
+  },
+
+  // Permanently deletes every Resolved/Cancelled ticket and its associated data
+  // (history, approvals, media rows + objects). This is the one sanctioned
+  // hard-delete path for tickets — see CLAUDE.md guardrails — gated to
+  // SUPER_ADMIN and irreversible.
+  async purgeResolvedAndCancelled(actorRole: Role, actorId: string) {
+    if (actorRole !== "SUPER_ADMIN") throw new ForbiddenError("Super-admin access required");
+
+    const { count, storageKeys } = await ticketRepository.purgeByStatuses(PURGEABLE_STATUSES);
+
+    if (storageKeys.length > 0) {
+      await deleteObjects(storageKeys).catch((err: unknown) => {
+        logger.error("Failed to delete purged ticket media from storage", { error: String(err) });
+      });
+    }
+
+    logger.info("Purged resolved/cancelled tickets", { actorId, count });
+
+    return { deletedCount: count };
   },
 };
 

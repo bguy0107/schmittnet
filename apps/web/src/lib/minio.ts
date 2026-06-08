@@ -1,4 +1,4 @@
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, GetObjectCommand, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { env } from "./env";
 
@@ -42,4 +42,22 @@ export async function getSignedReadUrl(key: string): Promise<string> {
   const command = new GetObjectCommand({ Bucket: BUCKET, Key: key });
   const internalUrl = await getSignedUrl(s3, command, { expiresIn: 3600 });
   return toPublicUrl(internalUrl);
+}
+
+const DELETE_BATCH_SIZE = 1000; // S3 DeleteObjects API limit per request
+
+// Best-effort batch delete — used when permanently purging tickets and their media.
+// Failures are logged by the caller rather than thrown, since the DB rows are the
+// source of truth and an orphaned object is recoverable via a storage sweep.
+export async function deleteObjects(keys: string[]): Promise<void> {
+  for (let i = 0; i < keys.length; i += DELETE_BATCH_SIZE) {
+    const batch = keys.slice(i, i + DELETE_BATCH_SIZE);
+    if (batch.length === 0) continue;
+    await s3.send(
+      new DeleteObjectsCommand({
+        Bucket: BUCKET,
+        Delete: { Objects: batch.map((Key) => ({ Key })) },
+      }),
+    );
+  }
 }

@@ -1013,6 +1013,78 @@ function DiscordSettingsTab() {
   );
 }
 
+// ─── Ticket cleanup (danger zone) ────────────────────────────────────────────
+
+function TicketCleanupSection() {
+  const qc = useQueryClient();
+  const [deletedCount, setDeletedCount] = useState<number | null>(null);
+
+  const { data: preview, isLoading } = useQuery({
+    queryKey: ["ticket-cleanup-preview"],
+    queryFn: () => fetchApi<{ count: number }>("/api/tickets/cleanup"),
+  });
+
+  const purge = useMutation({
+    mutationFn: () => fetchApi<{ deletedCount: number }>("/api/tickets/cleanup", { method: "POST" }),
+    onSuccess: ({ deletedCount }) => {
+      setDeletedCount(deletedCount);
+      void qc.invalidateQueries({ queryKey: ["ticket-cleanup-preview"] });
+      void qc.invalidateQueries({ queryKey: ["tickets"] });
+    },
+  });
+
+  const count = preview?.count ?? 0;
+  const plural = count === 1 ? "" : "s";
+
+  function handlePurge() {
+    setDeletedCount(null);
+    const confirmed = confirm(
+      `Permanently delete ${count} resolved/cancelled ticket${plural} — including all notes, ` +
+        `approvals, and uploaded photos/videos? This cannot be undone.`,
+    );
+    if (confirmed) purge.mutate();
+  }
+
+  return (
+    <div className="space-y-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4">
+      <div>
+        <p className="text-sm font-medium text-destructive">Danger zone</p>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          Permanently delete every Resolved or Cancelled ticket, along with its history, approvals,
+          and uploaded photos/videos. This is irreversible.
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          variant="destructive"
+          size="sm"
+          disabled={isLoading || count === 0 || purge.isPending}
+          onClick={handlePurge}
+        >
+          {purge.isPending
+            ? "Deleting…"
+            : `Delete ${count} resolved/cancelled ticket${plural}`}
+        </Button>
+        {!isLoading && count === 0 && (
+          <span className="text-xs text-gray-400 dark:text-gray-500">Nothing to clean up right now.</span>
+        )}
+      </div>
+
+      {deletedCount !== null && (
+        <p className="text-sm text-green-600 dark:text-green-400">
+          Deleted {deletedCount} ticket{deletedCount === 1 ? "" : "s"} and all associated data.
+        </p>
+      )}
+      {purge.isError && (
+        <p className="text-sm text-destructive">
+          {purge.error instanceof Error ? purge.error.message : "Failed to delete tickets — try again."}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ─── Admin panel (tabbed) ─────────────────────────────────────────────────────
 
 type Tab = "users" | "locations" | "settings";
@@ -1040,7 +1112,12 @@ export function AdminPanel() {
 
       {tab === "users" && <UsersTab />}
       {tab === "locations" && <LocationsTab />}
-      {tab === "settings" && <DiscordSettingsTab />}
+      {tab === "settings" && (
+        <div className="space-y-6">
+          <DiscordSettingsTab />
+          <TicketCleanupSection />
+        </div>
+      )}
     </div>
   );
 }
