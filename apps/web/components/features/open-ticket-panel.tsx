@@ -1,18 +1,15 @@
 "use client";
 
-import { useState, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Camera, Upload } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useOpenTicket } from "@/hooks/use-tickets";
-
-const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/heic", "image/webp", "video/mp4", "video/quicktime"];
-const MAX_BYTES = 100 * 1024 * 1024;
+import { useMediaUploads } from "@/hooks/use-media-uploads";
+import { MediaUploadList } from "@/components/features/media-upload-list";
 
 const schema = z.object({
   locationId: z.string().min(1, "Select a location"),
@@ -24,20 +21,6 @@ const schema = z.object({
 });
 type FormData = z.infer<typeof schema>;
 
-async function uploadFile(file: File): Promise<string> {
-  const presignRes = await fetch("/api/upload/presign", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ mimeType: file.type, fileSizeBytes: file.size }),
-  });
-  if (!presignRes.ok) throw new Error("Failed to get upload URL");
-  const { url, key } = (await presignRes.json()) as { url: string; key: string };
-
-  const uploadRes = await fetch(url, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
-  if (!uploadRes.ok) throw new Error("Media upload failed");
-  return key;
-}
-
 export function OpenTicketPanel({
   locations,
   onClose,
@@ -46,10 +29,7 @@ export function OpenTicketPanel({
   onClose: () => void;
 }) {
   const openTicket = useOpenTicket();
-  const [mediaFile, setMediaFile] = useState<File | null>(null);
-  const [mediaError, setMediaError] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const media = useMediaUploads();
 
   const {
     register,
@@ -59,48 +39,19 @@ export function OpenTicketPanel({
     resolver: zodResolver(schema),
   });
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    setMediaError(null);
-    if (!file) return;
-    if (!ACCEPTED_TYPES.includes(file.type)) {
-      setMediaError("Unsupported file type. Use JPEG, PNG, HEIC, MP4, or MOV.");
-      return;
-    }
-    if (file.size > MAX_BYTES) {
-      setMediaError("File is too large (max 100 MB).");
-      return;
-    }
-    setMediaFile(file);
-  }
-
   async function onSubmit(data: FormData) {
-    let mediaKeys: string[] | undefined;
-
-    if (mediaFile) {
-      setUploading(true);
-      try {
-        mediaKeys = [await uploadFile(mediaFile)];
-      } catch {
-        setMediaError("Upload failed. Please try again.");
-        setUploading(false);
-        return;
-      }
-      setUploading(false);
-    }
-
     await openTicket.mutateAsync({
       locationId: data.locationId,
       category: data.category,
       description: data.description,
       deadline: data.deadline || undefined,
-      mediaKeys,
+      mediaKeys: media.keys.length > 0 ? media.keys : undefined,
     });
 
     onClose();
   }
 
-  const isDisabled = isSubmitting || uploading || openTicket.isPending;
+  const isDisabled = isSubmitting || media.isUploading || openTicket.isPending;
 
   return (
     <>
@@ -189,43 +140,24 @@ export function OpenTicketPanel({
           {/* Media — optional */}
           <div className="space-y-1.5">
             <Label>
-              Photo or video <span className="text-gray-400">(optional)</span>
+              Photos or videos <span className="text-gray-400">(optional)</span>
             </Label>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-gray-300 bg-gray-50 py-5 text-sm text-gray-500 transition-colors hover:border-primary hover:bg-primary/5 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-400"
-            >
-              {mediaFile ? (
-                <>
-                  <Camera className="h-6 w-6 text-green-500" />
-                  <span className="font-medium text-gray-700 dark:text-gray-200">{mediaFile.name}</span>
-                  <span className="text-xs text-gray-400">
-                    {(mediaFile.size / 1024 / 1024).toFixed(1)} MB — tap to change
-                  </span>
-                </>
-              ) : (
-                <>
-                  <Upload className="h-6 w-6" />
-                  <span>Tap to add photo or video</span>
-                  <span className="text-xs text-gray-400">JPEG, PNG, HEIC, MP4, MOV — max 100 MB</span>
-                </>
-              )}
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept={ACCEPTED_TYPES.join(",")}
-              className="hidden"
-              onChange={handleFileChange}
-              aria-label="Upload photo or video"
+            <MediaUploadList
+              items={media.items}
+              onAdd={media.addFiles}
+              onRemove={media.removeItem}
+              onRetry={media.retryItem}
+              canAddMore={media.canAddMore}
+              maxFiles={media.maxFiles}
+              acceptedTypes={media.acceptedTypes}
+              addLabel="Tap to add photos or videos"
             />
-            {mediaError && <p className="text-xs text-destructive">{mediaError}</p>}
+            {media.rejection && <p className="text-xs text-destructive">{media.rejection}</p>}
           </div>
 
           <div className="flex gap-2 pt-2">
             <Button type="submit" className="flex-1" disabled={isDisabled}>
-              {uploading ? "Uploading…" : isSubmitting || openTicket.isPending ? "Opening…" : "Open ticket"}
+              {media.isUploading ? "Uploading…" : isSubmitting || openTicket.isPending ? "Opening…" : "Open ticket"}
             </Button>
             <Button type="button" variant="outline" onClick={onClose} disabled={isDisabled}>
               Cancel

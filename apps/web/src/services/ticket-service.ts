@@ -14,6 +14,26 @@ import { getSignedReadUrl } from "@/src/lib/minio";
 import { notificationService } from "./notification-service";
 import type { Role, Category } from "@schmittnet/types";
 
+const MEDIA_MIME_TYPES_BY_EXTENSION: Record<string, string> = {
+  jpeg: "image/jpeg",
+  jpg: "image/jpeg",
+  png: "image/png",
+  heic: "image/heic",
+  webp: "image/webp",
+  mp4: "video/mp4",
+  mov: "video/quicktime",
+  quicktime: "video/quicktime",
+};
+
+// The presign step names each object after the validated upload's MIME type (see
+// /api/upload/presign), so the extension reliably tells us the real type and lets
+// us avoid mislabeling videos as photos (and vice versa) when persisting tickets.
+function mediaInfoFromStorageKey(storageKey: string): { mediaType: "PHOTO" | "VIDEO"; mimeType: string } {
+  const ext = storageKey.split(".").pop()?.toLowerCase() ?? "";
+  const mimeType = MEDIA_MIME_TYPES_BY_EXTENSION[ext] ?? "application/octet-stream";
+  return { mediaType: mimeType.startsWith("video/") ? "VIDEO" : "PHOTO", mimeType };
+}
+
 export const submitTicketSchema = z.object({
   category: z.enum(["IT", "MAINTENANCE"]),
   description: z.string().min(10).max(2000),
@@ -69,8 +89,7 @@ export const ticketService = {
       reporterName: data.reporterName,
       mediaKeys: data.mediaKeys.map((key) => ({
         storageKey: key,
-        mediaType: "PHOTO" as const,
-        mimeType: "image/jpeg",
+        ...mediaInfoFromStorageKey(key),
       })),
     });
 
@@ -118,8 +137,7 @@ export const ticketService = {
       deadline: data.deadline ? new Date(data.deadline) : undefined,
       mediaKeys: (data.mediaKeys ?? []).map((key) => ({
         storageKey: key,
-        mediaType: "PHOTO" as const,
-        mimeType: "image/jpeg",
+        ...mediaInfoFromStorageKey(key),
       })),
       actorId,
     });
