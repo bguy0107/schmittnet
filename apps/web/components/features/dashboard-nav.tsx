@@ -1,12 +1,14 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { LogOut, Ticket, BarChart2, Settings, User } from "lucide-react";
+import { LogOut, Menu, Ticket, BarChart2, Settings, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import type { Route } from "next";
 import type { Role } from "@schmittnet/types";
 
@@ -46,83 +48,76 @@ const NAV_ITEMS: NavItem[] = [
     icon: <Settings className="h-4 w-4" />,
     roles: ["SUPER_ADMIN"],
   },
+  {
+    href: "/profile" as Route,
+    label: "Profile",
+    icon: <User className="h-4 w-4" />,
+    roles: ["SUPER_ADMIN", "TECHNICIAN", "OWNER", "OWNER_STAFF"],
+  },
 ];
+
+function navLinkClasses(active: boolean): string {
+  return cn(
+    "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+    active
+      ? "bg-primary/10 text-primary"
+      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-100",
+  );
+}
 
 export function DashboardNav({ user }: DashboardNavProps) {
   const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+
+  // Close the sidebar whenever the route changes (e.g. after tapping a link).
+  useEffect(() => setOpen(false), [pathname]);
 
   const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(user.role));
 
   return (
-    <nav className="border-b bg-white dark:bg-gray-900" aria-label="Main navigation">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-14 items-center justify-between">
-          {/* Logo + nav links */}
-          <div className="flex items-center gap-6">
-            <span className="text-base font-bold text-gray-900 dark:text-gray-100">SchmittNet</span>
-            <div className="hidden gap-1 sm:flex">
-              {visibleItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                    pathname.startsWith(item.href)
-                      ? "bg-primary/10 text-primary"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-100",
-                  )}
-                >
-                  {item.icon}
-                  {item.label}
-                </Link>
-              ))}
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-white px-4 dark:border-gray-800 dark:bg-gray-900">
+      <span className="text-base font-bold text-gray-900 dark:text-gray-100">SchmittNet</span>
+
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>
+          <Button variant="ghost" size="icon" aria-label="Open navigation menu">
+            <Menu className="h-5 w-5" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="flex w-72 max-w-[80vw] flex-col gap-0 p-0">
+          <SheetHeader className="border-b px-4 py-4">
+            <SheetTitle>SchmittNet</SheetTitle>
+          </SheetHeader>
+
+          <nav aria-label="Main navigation" className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
+            {visibleItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={navLinkClasses(pathname.startsWith(item.href))}
+              >
+                {item.icon}
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="flex items-center justify-between gap-2 border-t px-4 py-3">
+            <span className="min-w-0 truncate text-sm text-gray-500 dark:text-gray-400">{user.name ?? user.email}</span>
+            <div className="flex items-center gap-1">
+              <ThemeToggle />
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Sign out"
+                onClick={() => signOut({ callbackUrl: "/login" })}
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
             </div>
           </div>
-
-          {/* User + sign out */}
-          <div className="flex items-center gap-3">
-            <Link
-              href={"/profile" as Route}
-              className="hidden text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 sm:block"
-            >
-              {user.name ?? user.email}
-            </Link>
-            <Button variant="ghost" size="icon" asChild className="sm:hidden">
-              <Link href={"/profile" as Route} aria-label="Profile">
-                <User className="h-4 w-4" />
-              </Link>
-            </Button>
-            <ThemeToggle />
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Sign out"
-              onClick={() => signOut({ callbackUrl: "/login" })}
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Mobile nav */}
-        <div className="flex gap-1 pb-2 sm:hidden">
-          {visibleItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
-                pathname.startsWith(item.href)
-                  ? "bg-primary/10 text-primary"
-                  : "text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800",
-              )}
-            >
-              {item.icon}
-              {item.label}
-            </Link>
-          ))}
-        </div>
-      </div>
-    </nav>
+        </SheetContent>
+      </Sheet>
+    </header>
   );
 }
