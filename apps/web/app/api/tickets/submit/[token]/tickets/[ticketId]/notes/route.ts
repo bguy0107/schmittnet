@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ticketService } from "@/src/services/ticket-service";
 import { enforceSubmitRateLimit } from "@/src/proxy/rate-limit";
+import { getClientIp } from "@/src/lib/request-ip";
 import { toApiError, AppError } from "@/src/lib/errors";
 import { logger } from "@/src/lib/logger";
 
@@ -8,7 +9,7 @@ type Params = { params: Promise<{ token: string; ticketId: string }> };
 
 export async function POST(req: NextRequest, { params }: Params) {
   const { token, ticketId } = await params;
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const ip = getClientIp(req);
   try {
     await enforceSubmitRateLimit(token, ip);
     const body: unknown = await req.json();

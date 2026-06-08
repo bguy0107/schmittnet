@@ -5,6 +5,7 @@ import { randomUUID } from "crypto";
 import { z } from "zod";
 import { s3, BUCKET, ALLOWED_MIME_TYPES, MAX_FILE_SIZE_BYTES, toPublicUrl } from "@/src/lib/minio";
 import { toApiError, ValidationError, RateLimitError } from "@/src/lib/errors";
+import { getClientIp } from "@/src/lib/request-ip";
 import { enforcePresignRateLimit } from "@/src/proxy/rate-limit";
 
 const presignSchema = z.object({
@@ -15,7 +16,7 @@ const presignSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const ip = getClientIp(req);
   const body: unknown = await req.json().catch(() => null);
 
   try {
