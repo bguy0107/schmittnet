@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { fetchApi } from "@/lib/api";
+import { formatDateTime } from "@schmittnet/utils";
 import { useDiscordSettings, useUpdateDiscordSetting } from "@/hooks/use-tickets";
 
 // ─── Users tab ───────────────────────────────────────────────────────────────
@@ -26,6 +27,7 @@ interface UserRow {
   categories: string[];
   ownerId: string | null;
   notificationEmail: boolean;
+  lastLoginAt: string | null;
 }
 
 const editUserSchema = z.object({
@@ -456,13 +458,14 @@ function UsersTab() {
                 <th className="px-4 py-3 text-left">Email</th>
                 <th className="px-4 py-3 text-left">Role</th>
                 <th className="px-4 py-3 text-left">Categories</th>
+                <th className="px-4 py-3 text-left">Last Login</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y">
               {visibleUsers.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
+                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-gray-400 dark:text-gray-500">
                     {userView === "active" ? "No active users." : "No deactivated users."}
                   </td>
                 </tr>
@@ -480,6 +483,9 @@ function UsersTab() {
                   </td>
                   <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
                     {u.categories.length > 0 ? u.categories.join(", ") : <span className="text-gray-300 dark:text-gray-600">—</span>}
+                  </td>
+                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
+                    {u.lastLoginAt ? formatDateTime(u.lastLoginAt) : <span className="text-gray-300 dark:text-gray-600">Never</span>}
                   </td>
                   <td className="px-4 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                     {userView === "active" ? (

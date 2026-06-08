@@ -4,6 +4,7 @@ import { verify } from "@node-rs/argon2";
 import { z } from "zod";
 import { prisma } from "@/src/lib/prisma";
 import { logger } from "@/src/lib/logger";
+import { userRepository } from "@/src/repositories/user-repository";
 import { authConfig } from "./auth.config";
 
 const credentialsSchema = z.object({
@@ -46,6 +47,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           },
         );
         if (!passwordValid) return null;
+
+        await userRepository.recordLogin(user.id);
 
         return {
           id: user.id,

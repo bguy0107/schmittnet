@@ -11,6 +11,7 @@ const userSelect = {
   notificationEmail: true,
   ownerId: true,
   isActive: true,
+  lastLoginAt: true,
   createdAt: true,
   updatedAt: true,
 } satisfies Prisma.UserSelect;
@@ -110,6 +111,10 @@ export const userRepository = {
       data,
       select: userSelect,
     });
+  },
+
+  async recordLogin(id: string) {
+    await prisma.user.update({ where: { id }, data: { lastLoginAt: new Date() } });
   },
 
   async deactivate(id: string) {
