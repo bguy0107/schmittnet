@@ -72,6 +72,20 @@ const ALLOWED_TRANSITIONS: Partial<Record<string, readonly string[]>> = {
 const PURGEABLE_STATUSES: TicketStatus[] = ["RESOLVED", "CANCELLED"];
 
 export const ticketService = {
+  // Owner-scope is the project's highest-severity isolation boundary (CLAUDE.md):
+  // OWNER/OWNER_STAFF are always scoped to their own locations, and a TECHNICIAN
+  // who is owner-scoped (user.ownerId set) is likewise restricted to that owner's
+  // tickets. Floating technicians (no ownerId) and SUPER_ADMIN are unrestricted.
+  async assertOwnerScope(locationId: string, actorRole: Role, actorOwnerId: string | null) {
+    const isOwnerRole = actorRole === "OWNER" || actorRole === "OWNER_STAFF";
+    const isScopedTechnician = actorRole === "TECHNICIAN" && Boolean(actorOwnerId);
+    if (!isOwnerRole && !isScopedTechnician) return;
+
+    if (!actorOwnerId) throw new ForbiddenError("No owner context");
+    const ownerIds = await locationRepository.getOwnerIdsByLocationIds([locationId]);
+    if (!ownerIds.includes(actorOwnerId)) throw new ForbiddenError("Access denied");
+  },
+
   async getLocationContext(token: string) {
     const location = await locationRepository.findByToken(token);
     if (!location) throw new NotFoundError("Location not found or QR code is inactive");
@@ -221,11 +235,7 @@ export const ticketService = {
     const ticket = await ticketRepository.findById(id);
     if (!ticket) throw new NotFoundError("Ticket not found");
 
-    if (actorRole === "OWNER" || actorRole === "OWNER_STAFF") {
-      if (!actorOwnerId) throw new ForbiddenError("No owner context");
-      const ownerIds = await locationRepository.getOwnerIdsByLocationIds([ticket.location.id]);
-      if (!ownerIds.includes(actorOwnerId)) throw new ForbiddenError("Access denied");
-    }
+    await this.assertOwnerScope(ticket.location.id, actorRole, actorOwnerId);
 
     return ticket;
   },
@@ -252,11 +262,7 @@ export const ticketService = {
     const current = await ticketRepository.findById(ticketId);
     if (!current) throw new NotFoundError("Ticket not found");
 
-    if (isOwnerRole) {
-      if (!actorOwnerId) throw new ForbiddenError("No owner context");
-      const ownerIds = await locationRepository.getOwnerIdsByLocationIds([current.location.id]);
-      if (!ownerIds.includes(actorOwnerId)) throw new ForbiddenError("Access denied");
-    }
+    await this.assertOwnerScope(current.location.id, actorRole, actorOwnerId);
 
     const allowed = ALLOWED_TRANSITIONS[current.status] ?? [];
     if (!allowed.includes(data.status)) {
@@ -274,10 +280,11 @@ export const ticketService = {
     let ticket: Awaited<ReturnType<typeof ticketRepository.updateStatus>>;
 
     if (data.status === "AWAITING_APPROVAL") {
-      const existing = await ticketRepository.getPendingApproval(ticketId);
-      if (existing) throw new ConflictError("A pending approval request already exists");
-      // STATUS_CHANGE + optional NOTE written atomically inside
-      ticket = await ticketRepository.createApprovalAndUpdateStatus(ticketId, actorId, current.status, data.approvalReason);
+      // Existence check + STATUS_CHANGE + optional NOTE all written atomically inside
+      // (row-locked) — prevents concurrent requests from creating duplicate approvals.
+      const created = await ticketRepository.createApprovalAndUpdateStatus(ticketId, actorId, current.status, data.approvalReason);
+      if (!created) throw new ConflictError("A pending approval request already exists");
+      ticket = created;
     } else if (note) {
       // STATUS_CHANGE + NOTE written atomically inside; note has higher seq → displays above status change
       ticket = await ticketRepository.updateStatusWithNote(ticketId, data.status, actorId, current.status, note, extra);
@@ -311,13 +318,10 @@ export const ticketService = {
       throw new ForbiddenError("Only technicians may add notes");
     }
 
-    if (actorRole === "TECHNICIAN" && actorOwnerId) {
-      const allowedLocationIds = await locationRepository.getLocationIdsByOwner(actorOwnerId);
-      const ticket = await ticketRepository.findById(ticketId);
-      if (!ticket || !allowedLocationIds.includes(ticket.location.id)) {
-        throw new ForbiddenError("Access denied");
-      }
-    }
+    const ticket = await ticketRepository.findById(ticketId);
+    if (!ticket) throw new NotFoundError("Ticket not found");
+
+    await this.assertOwnerScope(ticket.location.id, actorRole, actorOwnerId);
 
     const { content } = z
       .object({ content: z.string().min(1).max(2000) })
@@ -326,30 +330,12 @@ export const ticketService = {
     return ticketRepository.addHistoryNote(ticketId, actorId, content);
   },
 
-  async requestApproval(ticketId: string, actorId: string, actorRole: Role) {
-    if (actorRole !== "TECHNICIAN" && actorRole !== "SUPER_ADMIN") {
-      throw new ForbiddenError("Only technicians may request approval");
-    }
-
-    const existing = await ticketRepository.getPendingApproval(ticketId);
-    if (existing) throw new ConflictError("A pending approval already exists for this ticket");
-
-    const approval = await ticketRepository.createApproval(ticketId, actorId);
-    await ticketRepository.updateStatus(ticketId, "AWAITING_APPROVAL");
-
-    const ticket = await ticketRepository.findById(ticketId);
-    if (!ticket) throw new NotFoundError("Ticket not found");
-
-    await notificationService.enqueueAwaitingApproval(ticketId, ticket.location.id);
-
-    return approval;
-  },
-
   async resolveApproval(
     ticketId: string,
     approvalId: string,
     actorId: string,
     actorRole: Role,
+    actorOwnerId: string | null,
     body: unknown,
   ) {
     if (actorRole !== "OWNER" && actorRole !== "OWNER_STAFF" && actorRole !== "SUPER_ADMIN") {
@@ -363,7 +349,15 @@ export const ticketService = {
       })
       .parse(body);
 
+    const ticket = await ticketRepository.findById(ticketId);
+    if (!ticket) throw new NotFoundError("Ticket not found");
+
+    await this.assertOwnerScope(ticket.location.id, actorRole, actorOwnerId);
+
     const result = await ticketRepository.resolveApproval(approvalId, actorId, ticketId, status, notes);
+    if (!result) {
+      throw new ConflictError("Approval not found, already resolved, or does not belong to this ticket");
+    }
 
     if (status === "APPROVED") {
       await notificationService.enqueueResolved(ticketId, result.ticket.locationId);
@@ -459,11 +453,7 @@ export const ticketService = {
     const ticket = await ticketRepository.findById(ticketId);
     if (!ticket) throw new NotFoundError("Ticket not found");
 
-    if (actorRole === "OWNER" || actorRole === "OWNER_STAFF") {
-      if (!actorOwnerId) throw new ForbiddenError("No owner context");
-      const ownerIds = await locationRepository.getOwnerIdsByLocationIds([ticket.location.id]);
-      if (!ownerIds.includes(actorOwnerId)) throw new ForbiddenError("Access denied");
-    }
+    await this.assertOwnerScope(ticket.location.id, actorRole, actorOwnerId);
 
     if (ticket.status === "CANCELLED" || ticket.status === "RESOLVED") {
       throw new ValidationError("Cannot update deadline on a closed ticket");
@@ -510,16 +500,24 @@ export const ticketService = {
     };
   },
 
-  async claimTicket(ticketId: string, actorId: string, actorRole: Role) {
+  async claimTicket(ticketId: string, actorId: string, actorRole: Role, actorOwnerId: string | null) {
     if (actorRole !== "TECHNICIAN" && actorRole !== "SUPER_ADMIN") {
       throw new ForbiddenError("Only technicians may claim tickets");
     }
 
     const ticket = await ticketRepository.findById(ticketId);
     if (!ticket) throw new NotFoundError("Ticket not found");
+
+    await this.assertOwnerScope(ticket.location.id, actorRole, actorOwnerId);
+
     if (ticket.assignee) throw new ConflictError("Ticket is already assigned");
 
-    return ticketRepository.assign(ticketId, actorId);
+    // assign() only succeeds if the ticket is still unassigned at the DB level —
+    // closes the TOCTOU window between the check above and the write.
+    const claimed = await ticketRepository.assign(ticketId, actorId);
+    if (!claimed) throw new ConflictError("Ticket is already assigned");
+
+    return { id: ticketId };
   },
 
   async getCleanupPreview(actorRole: Role) {

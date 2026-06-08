@@ -14,7 +14,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
 
   const { id } = await params;
   try {
-    const result = await ticketService.claimTicket(id, session.user.id, session.user.role);
+    const result = await ticketService.claimTicket(id, session.user.id, session.user.role, session.user.ownerId ?? null);
     return NextResponse.json(result);
   } catch (error) {
     if (error instanceof AppError) {

@@ -160,16 +160,18 @@ export const ticketRepository = {
     });
   },
 
-  async assign(id: string, userId: string, acknowledgedAt?: Date) {
-    return prisma.ticket.update({
-      where: { id },
+  // Conditioned on assignedTo being NULL so concurrent claim attempts can't both
+  // win — returns false if another technician claimed it first.
+  async assign(id: string, userId: string, acknowledgedAt?: Date): Promise<boolean> {
+    const { count } = await prisma.ticket.updateMany({
+      where: { id, assignedTo: null },
       data: {
         assignedTo: userId,
         acknowledgedAt: acknowledgedAt ?? new Date(),
         updatedAt: new Date(),
       },
-      select: { id: true },
     });
+    return count === 1;
   },
 
   async addHistoryNote(ticketId: string, authorId: string | null, content: string) {
@@ -302,16 +304,21 @@ export const ticketRepository = {
     });
   },
 
-  async createApproval(ticketId: string, requestedBy: string, approvalReason?: string) {
-    return prisma.ticketApproval.create({
-      data: { ticketId, requestedBy, approvalReason },
-      select: { id: true },
-    });
-  },
-
+  // Returns null if a pending approval already exists for this ticket. The row
+  // lock makes the existence check atomic with the create — without it, two
+  // concurrent requests could both pass the check and create duplicate pending
+  // approvals (and double-transition the ticket).
   async createApprovalAndUpdateStatus(ticketId: string, requestedBy: string, fromStatus: string, approvalReason?: string) {
     const authorName = await fetchUserName(requestedBy);
     return prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM tickets WHERE id = ${ticketId} FOR UPDATE`;
+
+      const existingPending = await tx.ticketApproval.findFirst({
+        where: { ticketId, status: "PENDING" },
+        select: { id: true },
+      });
+      if (existingPending) return null;
+
       await tx.ticketApproval.create({ data: { ticketId, requestedBy, approvalReason } });
       const ticket = await tx.ticket.update({
         where: { id: ticketId },
@@ -330,6 +337,9 @@ export const ticketRepository = {
     });
   },
 
+  // Returns null if approvalId doesn't belong to ticketId or isn't PENDING — the
+  // updateMany's WHERE clause makes that check atomic with the write, closing the
+  // race where two requests could both resolve the same pending approval.
   async resolveApproval(
     approvalId: string,
     approverId: string,
@@ -340,9 +350,14 @@ export const ticketRepository = {
     const newTicketStatus = status === "APPROVED" ? "APPROVED" : "IN_PROGRESS";
     const authorName = await fetchUserName(approverId);
     return prisma.$transaction(async (tx) => {
-      const approval = await tx.ticketApproval.update({
-        where: { id: approvalId },
+      const { count } = await tx.ticketApproval.updateMany({
+        where: { id: approvalId, ticketId, status: "PENDING" },
         data: { approverId, status, notes, resolvedAt: new Date() },
+      });
+      if (count === 0) return null;
+
+      const approval = await tx.ticketApproval.findUniqueOrThrow({
+        where: { id: approvalId },
         select: {
           id: true,
           status: true,
@@ -370,13 +385,6 @@ export const ticketRepository = {
         });
       }
       return approval;
-    });
-  },
-
-  async getPendingApproval(ticketId: string) {
-    return prisma.ticketApproval.findFirst({
-      where: { ticketId, status: "PENDING" },
-      select: { id: true },
     });
   },
 
