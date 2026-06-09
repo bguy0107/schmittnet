@@ -40,12 +40,10 @@ const PAGE_SIZE = 25;
 
 interface VideoRequestListProps {
   initialStatus?: string;
-  initialLocationId?: string;
 }
 
-export function VideoRequestList({ initialStatus = "", initialLocationId = "" }: VideoRequestListProps) {
+export function VideoRequestList({ initialStatus = "" }: VideoRequestListProps) {
   const [status, setStatus] = useState(initialStatus);
-  const [locationId, setLocationId] = useState(initialLocationId);
   const [page, setPage] = useState(1);
   const [showPanel, setShowPanel] = useState(false);
 
@@ -54,7 +52,7 @@ export function VideoRequestList({ initialStatus = "", initialLocationId = "" }:
     queryFn: () => fetchApi<{ id: string; name: string }[]>("/api/locations"),
   });
 
-  const { data, isLoading, isError } = useVideoRequests({ status, locationId, page, pageSize: PAGE_SIZE });
+  const { data, isLoading, isError } = useVideoRequests({ status, page, pageSize: PAGE_SIZE });
 
   const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 1;
 

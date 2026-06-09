@@ -21,10 +21,14 @@ const schema = z
       errorMap: () => ({ message: "Select the requesting party" }),
     }),
     officerContactDetails: z.string().max(500).optional(),
+    internalContactDetails: z.string().max(500).optional(),
   })
   .superRefine((data, ctx) => {
     if (data.requestingParty === "LAW_ENFORCEMENT") {
       if (!data.officerContactDetails?.trim()) ctx.addIssue({ code: "custom", path: ["officerContactDetails"], message: "Officer contact details are required" });
+    }
+    if (data.requestingParty === "INTERNAL") {
+      if (!data.internalContactDetails?.trim()) ctx.addIssue({ code: "custom", path: ["internalContactDetails"], message: "Internal contact details are required" });
     }
     if (data.footageStart && data.footageEnd && data.footageEnd <= data.footageStart) {
       ctx.addIssue({ code: "custom", path: ["footageEnd"], message: "End must be after start" });
@@ -60,6 +64,7 @@ export function OpenVideoRequestPanel({
       footageEnd: new Date(data.footageEnd).toISOString(),
       requestingParty: data.requestingParty,
       officerContactDetails: data.officerContactDetails || undefined,
+      internalContactDetails: data.internalContactDetails || undefined,
     });
     onClose();
   }
@@ -144,6 +149,23 @@ export function OpenVideoRequestPanel({
                 {...register("officerContactDetails")}
               />
               {errors.officerContactDetails && <p className="text-xs text-destructive">{errors.officerContactDetails.message}</p>}
+            </div>
+          )}
+
+          {/* Internal contact fields */}
+          {requestingParty === "INTERNAL" && (
+            <div className="space-y-1.5 rounded-md border border-gray-200 p-3 dark:border-gray-700">
+              <Label htmlFor="vr-internal-contact">
+                Internal Contact Details <span aria-hidden="true" className="text-destructive">*</span>
+              </Label>
+              <Textarea
+                id="vr-internal-contact"
+                placeholder="e.g. Manager on duty, department, phone extension"
+                rows={3}
+                aria-invalid={!!errors.internalContactDetails}
+                {...register("internalContactDetails")}
+              />
+              {errors.internalContactDetails && <p className="text-xs text-destructive">{errors.internalContactDetails.message}</p>}
             </div>
           )}
 

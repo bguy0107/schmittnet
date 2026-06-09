@@ -237,8 +237,9 @@ model VideoRequest {
   footageEnd       DateTime           @map("footage_end")
   requestingParty  RequestingParty    @map("requesting_party")
 
-  // Law enforcement only
-  officerContactDetails String?       @map("officer_contact_details")
+  // Party-specific contact details
+  officerContactDetails    String?    @map("officer_contact_details")
+  internalContactDetails   String?    @map("internal_contact_details")
 
   // Submitter — always captured regardless of auth state
   submitterName    String             @map("submitter_name")

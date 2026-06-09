@@ -26,6 +26,7 @@ const videoRequestSummarySelect = {
 const videoRequestDetailSelect = {
   ...videoRequestSummarySelect,
   officerContactDetails: true,
+  internalContactDetails: true,
   resolutionNote: true,
   resolvedAt: true,
   resolvedBy: { select: { id: true, name: true } },
@@ -82,6 +83,7 @@ export const videoRequestRepository = {
     footageEnd: Date;
     requestingParty: RequestingParty;
     officerContactDetails?: string;
+    internalContactDetails?: string;
     submitterName: string;
     submitterContact: string;
     submittedById?: string | null;
@@ -94,6 +96,7 @@ export const videoRequestRepository = {
         footageEnd: data.footageEnd,
         requestingParty: data.requestingParty,
         officerContactDetails: data.officerContactDetails,
+        internalContactDetails: data.internalContactDetails,
         submitterName: data.submitterName,
         submitterContact: data.submitterContact,
         submittedById: data.submittedById ?? undefined,

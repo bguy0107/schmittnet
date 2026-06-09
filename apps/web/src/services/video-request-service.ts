@@ -12,14 +12,23 @@ const videoRequestBaseSchema = z.object({
   footageEnd: z.string().datetime(),
   requestingParty: z.enum(["LAW_ENFORCEMENT", "INTERNAL"]),
   officerContactDetails: z.string().min(1).max(500).optional(),
+  internalContactDetails: z.string().min(1).max(500).optional(),
   submitterName: z.string().min(1).max(100),
   submitterContact: z.string().min(1).max(200),
 });
 
-function videoRequestRefineFn(data: { requestingParty: string; officerContactDetails?: string; footageStart: string; footageEnd: string }, ctx: z.RefinementCtx) {
+function videoRequestRefineFn(
+  data: { requestingParty: string; officerContactDetails?: string; internalContactDetails?: string; footageStart: string; footageEnd: string },
+  ctx: z.RefinementCtx,
+) {
   if (data.requestingParty === "LAW_ENFORCEMENT") {
-    if (!data.officerContactDetails) {
+    if (!data.officerContactDetails?.trim()) {
       ctx.addIssue({ code: "custom", path: ["officerContactDetails"], message: "Officer contact details are required for law enforcement requests" });
+    }
+  }
+  if (data.requestingParty === "INTERNAL") {
+    if (!data.internalContactDetails?.trim()) {
+      ctx.addIssue({ code: "custom", path: ["internalContactDetails"], message: "Internal contact details are required for internal requests" });
     }
   }
   if (new Date(data.footageEnd) <= new Date(data.footageStart)) {
@@ -42,11 +51,8 @@ export const cancelVideoRequestSchema = z.object({
 });
 
 async function assertOwnerScope(locationId: string, actorRole: Role, actorOwnerId: string | null) {
-  const isOwnerRole = actorRole === "OWNER" || actorRole === "OWNER_STAFF";
-  const isScopedTechnician = actorRole === "TECHNICIAN" && Boolean(actorOwnerId);
-  if (!isOwnerRole && !isScopedTechnician) return;
-
-  if (!actorOwnerId) throw new ForbiddenError("No owner context");
+  if (actorRole === "SUPER_ADMIN") return;
+  if (!actorOwnerId) throw new ForbiddenError("Access denied");
   const ownerIds = await locationRepository.getOwnerIdsByLocationIds([locationId]);
   if (!ownerIds.includes(actorOwnerId)) throw new ForbiddenError("Access denied");
 }
@@ -69,6 +75,7 @@ export const videoRequestService = {
       footageEnd: new Date(data.footageEnd),
       requestingParty: data.requestingParty,
       officerContactDetails: data.officerContactDetails,
+      internalContactDetails: data.internalContactDetails,
       submitterName: data.submitterName,
       submitterContact: data.submitterContact,
       submittedById: null,
@@ -88,14 +95,15 @@ export const videoRequestService = {
     };
   },
 
-  async createVideoRequest(actorId: string, actorRole: Role, actorOwnerId: string | null, body: unknown) {
+  async createVideoRequest(actorId: string, actorEmail: string, actorRole: Role, actorOwnerId: string | null, body: unknown) {
     const data = createVideoRequestSchema.parse(body);
 
     let allowedLocationIds: string[] | undefined;
     if (actorRole === "OWNER" || actorRole === "OWNER_STAFF") {
       if (!actorOwnerId) throw new ForbiddenError("No owner context");
       allowedLocationIds = await locationRepository.getLocationIdsByOwner(actorOwnerId);
-    } else if (actorRole === "TECHNICIAN" && actorOwnerId) {
+    } else if (actorRole === "TECHNICIAN") {
+      if (!actorOwnerId) throw new ForbiddenError("Access denied");
       allowedLocationIds = await locationRepository.getLocationIdsByOwner(actorOwnerId);
     }
 
@@ -113,8 +121,9 @@ export const videoRequestService = {
       footageEnd: new Date(data.footageEnd),
       requestingParty: data.requestingParty,
       officerContactDetails: data.officerContactDetails,
+      internalContactDetails: data.internalContactDetails,
       submitterName: data.submitterName,
-      submitterContact: data.submitterContact ?? "",
+      submitterContact: data.submitterContact ?? actorEmail,
       submittedById: actorId,
     });
 
@@ -143,7 +152,8 @@ export const videoRequestService = {
     if (actorRole === "OWNER" || actorRole === "OWNER_STAFF") {
       if (!actorOwnerId) throw new ForbiddenError("No owner context");
       locationIds = await locationRepository.getLocationIdsByOwner(actorOwnerId);
-    } else if (actorRole === "TECHNICIAN" && actorOwnerId) {
+    } else if (actorRole === "TECHNICIAN") {
+      if (!actorOwnerId) throw new ForbiddenError("Access denied");
       locationIds = await locationRepository.getLocationIdsByOwner(actorOwnerId);
     }
 
@@ -173,9 +183,8 @@ export const videoRequestService = {
   },
 
   async resolveVideoRequest(id: string, actorId: string, actorRole: Role, actorOwnerId: string | null, body: unknown) {
-    // Only IT technicians (and super admin) may resolve
-    if (actorRole !== "SUPER_ADMIN") {
-      if (actorRole !== "TECHNICIAN") throw new ForbiddenError("Only IT technicians may resolve video requests");
+    if (actorRole !== "SUPER_ADMIN" && actorRole !== "TECHNICIAN") {
+      throw new ForbiddenError("Only IT technicians may resolve video requests");
     }
 
     const { resolutionNote } = resolveVideoRequestSchema.parse(body);
@@ -199,13 +208,13 @@ export const videoRequestService = {
     return result;
   },
 
-  async cancelVideoRequest(id: string, actorId: string | null, actorRole: Role | null, actorOwnerId: string | null, body: unknown) {
+  async cancelVideoRequest(id: string, actorId: string, actorRole: Role, actorOwnerId: string | null, body: unknown) {
     const { note } = cancelVideoRequestSchema.parse(body);
 
     const request = await videoRequestRepository.findById(id);
     if (!request) throw new NotFoundError("Video request not found");
 
-    if (actorRole && (actorRole === "OWNER" || actorRole === "OWNER_STAFF")) {
+    if (actorRole !== "SUPER_ADMIN") {
       await assertOwnerScope(request.location.id, actorRole, actorOwnerId);
     }
 

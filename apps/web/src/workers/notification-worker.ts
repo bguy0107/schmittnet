@@ -212,33 +212,21 @@ async function processJob(
   }
 
   if (data.type === "VIDEO_REQUEST_OPENED") {
-    const [request, techs] = await Promise.all([
-      prisma.videoRequest.findUnique({
-        where: { id: data.videoRequestId },
-        select: {
-          id: true,
-          requestingParty: true,
-          cameraAreas: true,
-          location: { select: { name: true } },
-        },
-      }),
-      prisma.user.findMany({
-        where: { role: "TECHNICIAN", isActive: true, categories: { has: "IT" } },
-        select: { email: true, notificationEmail: true },
-      }),
-    ]);
+    const request = await prisma.videoRequest.findUnique({
+      where: { id: data.videoRequestId },
+      select: {
+        id: true,
+        requestingParty: true,
+        cameraAreas: true,
+        location: { select: { name: true, ownerId: true } },
+      },
+    });
     if (!request) return;
 
     const ref = data.videoRequestId.slice(0, 8).toUpperCase();
     const partyLabel = request.requestingParty === "LAW_ENFORCEMENT" ? "Law Enforcement" : "Internal";
     const subject = `[SchmittNet] New Video Footage Request — ${request.location.name}`;
     const body = `A video footage request (#${ref}) has been submitted at ${request.location.name} by ${partyLabel}.`;
-
-    const [webhookUrl, roleId] = await Promise.all([
-      settingRepository.getDiscordWebhook("IT"),
-      settingRepository.getDiscordRoleId("IT"),
-    ]);
-
     const dEmbed = makeEmbed({
       title: "📹 Video Footage Request",
       color: 0xe67e22,
@@ -250,9 +238,19 @@ async function processJob(
       ],
     });
 
+    const techs = await prisma.user.findMany({
+      where: {
+        role: "TECHNICIAN",
+        isActive: true,
+        categories: { has: "IT" },
+        OR: [{ ownerId: null }, { ownerId: request.location.ownerId }],
+      },
+      select: { email: true, notificationEmail: true },
+    });
+
     await Promise.all([
       notifyUsers(techs, subject, body, emailTransport),
-      webhookUrl ? sendDiscordEmbed(webhookUrl, dEmbed, roleId) : Promise.resolve(),
+      notifyDepartment("IT", dEmbed),
     ]);
   }
 

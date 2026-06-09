@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { VideoRequestList } from "@/components/features/video-request-list";
 
 interface PageProps {
-  searchParams: Promise<{ status?: string; locationId?: string }>;
+  searchParams: Promise<{ status?: string }>;
 }
 
 export default async function VideoRequestsPage({ searchParams }: PageProps) {
@@ -15,10 +15,7 @@ export default async function VideoRequestsPage({ searchParams }: PageProps) {
   return (
     <div>
       <h1 className="mb-6 text-xl font-semibold text-gray-900 dark:text-gray-100">Video Requests</h1>
-      <VideoRequestList
-        initialStatus={params.status ?? ""}
-        initialLocationId={params.locationId ?? ""}
-      />
+      <VideoRequestList initialStatus={params.status ?? ""} />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import type {
   PaginatedResponse,
   SubmitVideoRequestResponse,
   SubmitVideoRequestInput,
+  CreateVideoRequestInput,
 } from "@schmittnet/types";
 
 interface VideoRequestFilter {
@@ -50,7 +51,7 @@ export function useSubmitVideoRequest(token: string) {
 export function useCreateVideoRequest() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: SubmitVideoRequestInput & { locationId: string }) =>
+    mutationFn: (body: CreateVideoRequestInput) =>
       fetchApi<SubmitVideoRequestResponse>("/api/video-requests", {
         method: "POST",
         body: JSON.stringify(body),

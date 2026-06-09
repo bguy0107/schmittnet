@@ -135,6 +135,12 @@ export function VideoRequestDetail({ requestId, role }: VideoRequestDetailProps)
           </div>
         )}
 
+        {req.requestingParty === "INTERNAL" && req.internalContactDetails && (
+          <div className="mt-4 rounded-md border border-gray-200 p-4 dark:border-gray-700">
+            <DetailRow label="Internal Contact Details" value={req.internalContactDetails} />
+          </div>
+        )}
+
         {req.status === "RESOLVED" && (
           <div className="mt-4 rounded-md bg-green-50 p-4 dark:bg-green-900/20">
             <p className="text-xs font-medium uppercase tracking-wide text-green-700 dark:text-green-400">Resolution</p>

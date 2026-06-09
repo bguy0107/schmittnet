@@ -25,11 +25,17 @@ const schema = z
       errorMap: () => ({ message: "Please select the requesting party" }),
     }),
     officerContactDetails: z.string().max(500).optional(),
+    internalContactDetails: z.string().max(500).optional(),
   })
   .superRefine((data, ctx) => {
     if (data.requestingParty === "LAW_ENFORCEMENT") {
       if (!data.officerContactDetails?.trim()) {
         ctx.addIssue({ code: "custom", path: ["officerContactDetails"], message: "Officer contact details are required" });
+      }
+    }
+    if (data.requestingParty === "INTERNAL") {
+      if (!data.internalContactDetails?.trim()) {
+        ctx.addIssue({ code: "custom", path: ["internalContactDetails"], message: "Internal contact details are required" });
       }
     }
     if (data.footageStart && data.footageEnd && data.footageEnd <= data.footageStart) {
@@ -62,6 +68,7 @@ export function VideoRequestSubmitForm({ token }: { token: string }) {
       footageEnd: new Date(data.footageEnd).toISOString(),
       requestingParty: data.requestingParty,
       officerContactDetails: data.officerContactDetails || undefined,
+      internalContactDetails: data.internalContactDetails || undefined,
     });
     setConfirmation(result);
   }
@@ -169,6 +176,25 @@ export function VideoRequestSubmitForm({ token }: { token: string }) {
               {...register("officerContactDetails")}
             />
             {errors.officerContactDetails && <p className="text-xs text-destructive">{errors.officerContactDetails.message}</p>}
+          </div>
+        </div>
+      )}
+
+      {/* Internal contact fields */}
+      {requestingParty === "INTERNAL" && (
+        <div className="space-y-3 rounded-md border border-gray-200 p-4 dark:border-gray-700">
+          <div className="space-y-1.5">
+            <Label htmlFor="internalContactDetails">
+              Internal Contact Details <span aria-hidden="true" className="text-destructive">*</span>
+            </Label>
+            <Textarea
+              id="internalContactDetails"
+              placeholder="e.g. Manager on duty, department, phone extension"
+              rows={3}
+              aria-invalid={!!errors.internalContactDetails}
+              {...register("internalContactDetails")}
+            />
+            {errors.internalContactDetails && <p className="text-xs text-destructive">{errors.internalContactDetails.message}</p>}
           </div>
         </div>
       )}

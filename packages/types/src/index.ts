@@ -131,6 +131,7 @@ export interface VideoRequestSummary {
 
 export interface VideoRequestDetail extends VideoRequestSummary {
   officerContactDetails: string | null;
+  internalContactDetails: string | null;
   resolutionNote: string | null;
   resolvedAt: string | null;
   resolvedBy: { id: string; name: string | null } | null;
@@ -146,6 +147,19 @@ export interface SubmitVideoRequestInput {
   footageEnd: string;
   requestingParty: RequestingParty;
   officerContactDetails?: string;
+  internalContactDetails?: string;
+  submitterName: string;
+  submitterContact: string;
+}
+
+export interface CreateVideoRequestInput {
+  locationId: string;
+  cameraAreas: string;
+  footageStart: string;
+  footageEnd: string;
+  requestingParty: RequestingParty;
+  officerContactDetails?: string;
+  internalContactDetails?: string;
   submitterName: string;
   submitterContact?: string;
 }

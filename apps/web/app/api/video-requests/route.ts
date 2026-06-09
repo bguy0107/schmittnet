@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
   try {
     const result = await videoRequestService.createVideoRequest(
       session.user.id,
+      session.user.email,
       session.user.role,
       session.user.ownerId,
       body,
