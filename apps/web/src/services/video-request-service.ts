@@ -4,7 +4,7 @@ import { locationRepository } from "@/src/repositories/location-repository";
 import { NotFoundError, ForbiddenError, ValidationError } from "@/src/lib/errors";
 import { logger } from "@/src/lib/logger";
 import { notificationService } from "./notification-service";
-import type { Role } from "@schmittnet/types";
+import type { Role, VideoRequestStatus } from "@schmittnet/types";
 
 const videoRequestBaseSchema = z.object({
   cameraAreas: z.string().min(1).max(500),
@@ -39,7 +39,7 @@ function videoRequestRefineFn(
 export const submitVideoRequestSchema = videoRequestBaseSchema.superRefine(videoRequestRefineFn);
 
 export const createVideoRequestSchema = videoRequestBaseSchema
-  .extend({ locationId: z.string().uuid(), submitterContact: z.string().max(200).optional() })
+  .extend({ locationId: z.string().uuid(), submitterContact: z.string().trim().min(1).max(200).optional() })
   .superRefine(videoRequestRefineFn);
 
 export const resolveVideoRequestSchema = z.object({
@@ -52,6 +52,8 @@ export const cancelVideoRequestSchema = z.object({
 
 async function assertOwnerScope(locationId: string, actorRole: Role, actorOwnerId: string | null) {
   if (actorRole === "SUPER_ADMIN") return;
+  // Global technicians (ownerId=null) cover all owners — no location restriction.
+  if (actorRole === "TECHNICIAN" && !actorOwnerId) return;
   if (!actorOwnerId) throw new ForbiddenError("Access denied");
   const ownerIds = await locationRepository.getOwnerIdsByLocationIds([locationId]);
   if (!ownerIds.includes(actorOwnerId)) throw new ForbiddenError("Access denied");
@@ -102,10 +104,10 @@ export const videoRequestService = {
     if (actorRole === "OWNER" || actorRole === "OWNER_STAFF") {
       if (!actorOwnerId) throw new ForbiddenError("No owner context");
       allowedLocationIds = await locationRepository.getLocationIdsByOwner(actorOwnerId);
-    } else if (actorRole === "TECHNICIAN") {
-      if (!actorOwnerId) throw new ForbiddenError("Access denied");
+    } else if (actorRole === "TECHNICIAN" && actorOwnerId) {
       allowedLocationIds = await locationRepository.getLocationIdsByOwner(actorOwnerId);
     }
+    // Global technician (TECHNICIAN + ownerId=null): no location restriction.
 
     if (allowedLocationIds && !allowedLocationIds.includes(data.locationId)) {
       throw new ForbiddenError("Location is not within your scope");
@@ -142,7 +144,7 @@ export const videoRequestService = {
   },
 
   async listVideoRequests(actorId: string, actorRole: Role, actorOwnerId: string | null, filter: {
-    status?: string;
+    status?: VideoRequestStatus;
     locationId?: string;
     page?: number;
     pageSize?: number;
@@ -152,10 +154,10 @@ export const videoRequestService = {
     if (actorRole === "OWNER" || actorRole === "OWNER_STAFF") {
       if (!actorOwnerId) throw new ForbiddenError("No owner context");
       locationIds = await locationRepository.getLocationIdsByOwner(actorOwnerId);
-    } else if (actorRole === "TECHNICIAN") {
-      if (!actorOwnerId) throw new ForbiddenError("Access denied");
+    } else if (actorRole === "TECHNICIAN" && actorOwnerId) {
       locationIds = await locationRepository.getLocationIdsByOwner(actorOwnerId);
     }
+    // Global technician (TECHNICIAN + ownerId=null): no location restriction.
 
     if (filter.locationId) {
       if (locationIds) {
@@ -167,7 +169,7 @@ export const videoRequestService = {
 
     return videoRequestRepository.findMany({
       locationIds,
-      status: filter.status as never,
+      status: filter.status,
       page: filter.page,
       pageSize: filter.pageSize,
     });
@@ -209,6 +211,11 @@ export const videoRequestService = {
   },
 
   async cancelVideoRequest(id: string, actorId: string, actorRole: Role, actorOwnerId: string | null, body: unknown) {
+    const CANCEL_ROLES: Role[] = ["SUPER_ADMIN", "OWNER", "OWNER_STAFF"];
+    if (!CANCEL_ROLES.includes(actorRole)) {
+      throw new ForbiddenError("Insufficient permissions to cancel video requests");
+    }
+
     const { note } = cancelVideoRequestSchema.parse(body);
 
     const request = await videoRequestRepository.findById(id);
@@ -237,7 +244,7 @@ export const videoRequestService = {
     const location = await this.getLocationContext(token);
 
     const request = await videoRequestRepository.findByIdAndLocation(id, location.id);
-    if (!request) throw new NotFoundError("Video request not found");
+    if (!request || request.submittedBy !== null) throw new NotFoundError("Video request not found");
 
     if (request.status !== "OPEN") {
       throw new ValidationError(`Cannot cancel a request in ${request.status} status`);

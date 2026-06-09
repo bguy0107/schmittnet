@@ -252,6 +252,7 @@ async function processJob(
       notifyUsers(techs, subject, body, emailTransport),
       notifyDepartment("IT", dEmbed),
     ]);
+    return;
   }
 
   if (data.type === "USER_WELCOME") {

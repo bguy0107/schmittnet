@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { videoRequestService } from "@/src/services/video-request-service";
-import { enforceSubmitRateLimit } from "@/src/proxy/rate-limit";
+import { enforceCancelRateLimit } from "@/src/proxy/rate-limit";
 import { getClientIp } from "@/src/lib/request-ip";
 import { toApiError, AppError } from "@/src/lib/errors";
 import { logger } from "@/src/lib/logger";
@@ -12,7 +12,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   const ip = getClientIp(req);
 
   try {
-    await enforceSubmitRateLimit(token, ip);
+    await enforceCancelRateLimit(token, ip);
     const body: unknown = await req.json();
     const result = await videoRequestService.cancelPublicVideoRequest(token, id, body);
     return NextResponse.json(result);

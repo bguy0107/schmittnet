@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { auth } from "@/auth";
 import { videoRequestService } from "@/src/services/video-request-service";
 import { toApiError, AppError, UnauthorizedError } from "@/src/lib/errors";
 import { logger } from "@/src/lib/logger";
+
+const listQuerySchema = z.object({
+  status: z.enum(["OPEN", "RESOLVED", "CANCELLED"]).optional(),
+  locationId: z.string().optional(),
+  page: z.coerce.number().int().positive().optional(),
+  pageSize: z.coerce.number().int().positive().optional(),
+});
 
 export async function GET(req: NextRequest) {
   const session = await auth();
@@ -11,12 +19,16 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = req.nextUrl;
-  const filter = {
+  const parsed = listQuerySchema.safeParse({
     status: searchParams.get("status") ?? undefined,
     locationId: searchParams.get("locationId") ?? undefined,
-    page: searchParams.get("page") ? Number(searchParams.get("page")) : undefined,
-    pageSize: searchParams.get("pageSize") ? Number(searchParams.get("pageSize")) : undefined,
-  };
+    page: searchParams.get("page") ?? undefined,
+    pageSize: searchParams.get("pageSize") ?? undefined,
+  });
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid query parameters", details: parsed.error.flatten() }, { status: 400 });
+  }
+  const filter = parsed.data;
 
   try {
     const result = await videoRequestService.listVideoRequests(
@@ -54,6 +66,9 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     if (error instanceof AppError) {
       return NextResponse.json(toApiError(error), { status: error.statusCode });
+    }
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: "Invalid request body", details: error.flatten() }, { status: 400 });
     }
     logger.error("POST /api/video-requests unexpected error", { error: String(error) });
     return NextResponse.json(toApiError(error), { status: 500 });
