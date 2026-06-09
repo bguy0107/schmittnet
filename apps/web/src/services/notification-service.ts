@@ -9,7 +9,8 @@ export type NotificationJobData =
   | { type: "AWAITING_APPROVAL"; ticketId: string; locationId: string }
   | { type: "RESOLVED"; ticketId: string; locationId: string }
   | { type: "APPROVAL_DECISION"; ticketId: string; recipientId: string; decision: "APPROVED" | "DECLINED" }
-  | { type: "USER_WELCOME"; recipientEmail: string; recipientName: string; temporaryPassword: string };
+  | { type: "USER_WELCOME"; recipientEmail: string; recipientName: string; temporaryPassword: string }
+  | { type: "VIDEO_REQUEST_OPENED"; videoRequestId: string; locationId: string };
 
 const QUEUE_NAME = "notifications";
 
@@ -82,6 +83,17 @@ export const notificationService = {
       .catch((err: unknown) =>
         logger.error("Failed to enqueue APPROVAL_DECISION notification", {
           ticket_id: ticketId,
+          error: String(err),
+        }),
+      );
+  },
+
+  async enqueueVideoRequestOpened(videoRequestId: string, locationId: string) {
+    await getQueue()
+      .add("video-request-opened", { type: "VIDEO_REQUEST_OPENED", videoRequestId, locationId })
+      .catch((err: unknown) =>
+        logger.error("Failed to enqueue VIDEO_REQUEST_OPENED notification", {
+          video_request_id: videoRequestId,
           error: String(err),
         }),
       );

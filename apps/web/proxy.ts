@@ -7,9 +7,10 @@ import { SESSION_COOKIE_NAME } from "@/src/lib/session-constants";
 // `auth()` re-running in the service/route layer for every request (see CLAUDE.md).
 const PUBLIC_PATHS = [
   "/login",
-  "/submit/", // public QR ticket submission UI
+  "/submit/", // public QR ticket/video-request submission UI
   "/api/auth",
   "/api/tickets/submit/",
+  "/api/video-requests/submit/",
   "/api/health",
   "/api/upload/",
 ];
