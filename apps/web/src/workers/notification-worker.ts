@@ -211,6 +211,50 @@ async function processJob(
     await notifyDepartment(data.category, dEmbed);
   }
 
+  if (data.type === "VIDEO_REQUEST_OPENED") {
+    const request = await prisma.videoRequest.findUnique({
+      where: { id: data.videoRequestId },
+      select: {
+        id: true,
+        requestingParty: true,
+        cameraAreas: true,
+        location: { select: { name: true, ownerId: true } },
+      },
+    });
+    if (!request) return;
+
+    const ref = data.videoRequestId.slice(0, 8).toUpperCase();
+    const partyLabel = request.requestingParty === "LAW_ENFORCEMENT" ? "Law Enforcement" : "Internal";
+    const subject = `[SchmittNet] New Video Footage Request — ${request.location.name}`;
+    const body = `A video footage request (#${ref}) has been submitted at ${request.location.name} by ${partyLabel}.`;
+    const dEmbed = makeEmbed({
+      title: "📹 Video Footage Request",
+      color: 0xe67e22,
+      fields: [
+        { name: "Location", value: request.location.name },
+        { name: "Camera / Area", value: truncate(request.cameraAreas, 100) },
+        { name: "Requesting Party", value: partyLabel },
+        { name: "Reference", value: `#${ref}` },
+      ],
+    });
+
+    const techs = await prisma.user.findMany({
+      where: {
+        role: "TECHNICIAN",
+        isActive: true,
+        categories: { has: "IT" },
+        OR: [{ ownerId: null }, { ownerId: request.location.ownerId }],
+      },
+      select: { email: true, notificationEmail: true },
+    });
+
+    await Promise.all([
+      notifyUsers(techs, subject, body, emailTransport),
+      notifyDepartment("IT", dEmbed),
+    ]);
+    return;
+  }
+
   if (data.type === "USER_WELCOME") {
     const appUrl = env.APP_URL ?? "https://schmittnet.app";
     const subject = "[SchmittNet] Welcome to SchmittNet";

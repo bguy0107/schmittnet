@@ -28,6 +28,26 @@ export async function enforceSubmitRateLimit(token: string, ip: string): Promise
   }
 }
 
+export async function enforceCancelRateLimit(token: string, ip: string): Promise<void> {
+  const now = Date.now();
+  const windowStart = now - WINDOW_SECONDS * 1000;
+
+  const tokenKey = `ratelimit:cancel:token:${token}`;
+  const ipKey = `ratelimit:cancel:ip:${ip}`;
+
+  const [tokenCount, ipCount] = await Promise.all([
+    slidingWindowCount(tokenKey, now, windowStart),
+    slidingWindowCount(ipKey, now, windowStart),
+  ]);
+
+  if (tokenCount > TOKEN_LIMIT) {
+    throw new RateLimitError("Too many requests from this location. Please wait a minute.");
+  }
+  if (ipCount > IP_LIMIT) {
+    throw new RateLimitError("Too many requests from this network. Please wait a minute.");
+  }
+}
+
 export async function enforcePresignRateLimit(ip: string): Promise<void> {
   const now = Date.now();
   const windowStart = now - WINDOW_SECONDS * 1000;

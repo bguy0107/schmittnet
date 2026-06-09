@@ -56,6 +56,17 @@ enum HistoryEntryType {
   DEADLINE_CHANGE
 }
 
+enum VideoRequestStatus {
+  OPEN
+  RESOLVED
+  CANCELLED
+}
+
+enum RequestingParty {
+  LAW_ENFORCEMENT
+  INTERNAL
+}
+
 // ─── Sessions (ADR-006) ───────────────────────────────────────────────────────
 
 // Server-side sessions: an opaque random token lives in an HttpOnly cookie, and
@@ -112,6 +123,9 @@ model User {
   history            TicketHistory[]
   approvalsRequested TicketApproval[] @relation("RequestedBy")
   approvalsActioned  TicketApproval[] @relation("ActionedBy")
+  submittedVideoRequests VideoRequest[] @relation("VideoRequestSubmitter")
+  resolvedVideoRequests  VideoRequest[] @relation("VideoRequestResolver")
+  cancelledVideoRequests VideoRequest[] @relation("VideoRequestCanceller")
 
   @@map("users")
 }
@@ -126,8 +140,9 @@ model Location {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  owner   Owner    @relation(fields: [ownerId], references: [id])
-  tickets Ticket[]
+  owner         Owner         @relation(fields: [ownerId], references: [id])
+  tickets       Ticket[]
+  videoRequests VideoRequest[]
 
   @@map("locations")
 }
@@ -212,4 +227,42 @@ model Setting {
   value String
 
   @@map("settings")
+}
+
+model VideoRequest {
+  id               String             @id @default(uuid())
+  locationId       String             @map("location_id")
+  cameraAreas      String             @map("camera_areas")
+  footageStart     DateTime           @map("footage_start")
+  footageEnd       DateTime           @map("footage_end")
+  requestingParty  RequestingParty    @map("requesting_party")
+
+  // Party-specific contact details
+  officerContactDetails    String?    @map("officer_contact_details")
+  internalContactDetails   String?    @map("internal_contact_details")
+
+  // Submitter — always captured regardless of auth state
+  submitterName    String             @map("submitter_name")
+  submitterContact String             @map("submitter_contact")
+  submittedById    String?            @map("submitted_by_id")
+
+  status           VideoRequestStatus @default(OPEN)
+
+  resolutionNote   String?            @map("resolution_note")
+  resolvedById     String?            @map("resolved_by_id")
+  resolvedAt       DateTime?          @map("resolved_at")
+
+  cancellationNote String?            @map("cancellation_note")
+  cancelledById    String?            @map("cancelled_by_id")
+  cancelledAt      DateTime?          @map("cancelled_at")
+
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+
+  location    Location @relation(fields: [locationId], references: [id])
+  submittedBy User?    @relation("VideoRequestSubmitter", fields: [submittedById], references: [id])
+  resolvedBy  User?    @relation("VideoRequestResolver", fields: [resolvedById], references: [id])
+  cancelledBy User?    @relation("VideoRequestCanceller", fields: [cancelledById], references: [id])
+
+  @@map("video_requests")
 }

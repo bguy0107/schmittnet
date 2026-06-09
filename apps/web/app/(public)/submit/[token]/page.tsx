@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ClipboardPlus, List } from "lucide-react";
+import { ClipboardPlus, List, Video } from "lucide-react";
+import type { Route } from "next";
 
 interface PageProps {
   params: Promise<{ token: string }>;
@@ -34,6 +35,17 @@ export default async function SubmitLandingPage({ params }: PageProps) {
           <div>
             <p className="font-semibold text-gray-900 dark:text-gray-100">View Tickets</p>
             <p className="text-sm text-gray-500 dark:text-gray-400">See open and recent tickets for this location</p>
+          </div>
+        </Link>
+
+        <Link
+          href={`/submit/${token}/video` as Route}
+          className="flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-all hover:border-primary hover:shadow-md dark:border-gray-800 dark:bg-gray-900"
+        >
+          <Video className="h-8 w-8 shrink-0 text-primary" aria-hidden="true" />
+          <div>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">Request Video Footage</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Submit a request for security camera footage</p>
           </div>
         </Link>
       </div>

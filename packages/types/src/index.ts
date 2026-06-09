@@ -2,6 +2,10 @@
 
 export type Role = "SUPER_ADMIN" | "OWNER" | "OWNER_STAFF" | "TECHNICIAN";
 
+export type VideoRequestStatus = "OPEN" | "RESOLVED" | "CANCELLED";
+
+export type RequestingParty = "LAW_ENFORCEMENT" | "INTERNAL";
+
 export type Category = "IT" | "MAINTENANCE";
 
 export type TicketStatus =
@@ -107,6 +111,62 @@ export interface SubmitTicketResponse {
 export interface LocationContext {
   id: string;
   name: string;
+}
+
+// Video requests
+
+export interface VideoRequestSummary {
+  id: string;
+  status: VideoRequestStatus;
+  requestingParty: RequestingParty;
+  cameraAreas: string;
+  footageStart: string;
+  footageEnd: string;
+  submitterName: string;
+  submitterContact: string;
+  location: { id: string; name: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VideoRequestDetail extends VideoRequestSummary {
+  officerContactDetails: string | null;
+  internalContactDetails: string | null;
+  resolutionNote: string | null;
+  resolvedAt: string | null;
+  resolvedBy: { id: string; name: string | null } | null;
+  cancellationNote: string | null;
+  cancelledAt: string | null;
+  cancelledBy: { id: string; name: string | null } | null;
+  submittedBy: { id: string; name: string | null } | null;
+}
+
+export interface SubmitVideoRequestInput {
+  cameraAreas: string;
+  footageStart: string;
+  footageEnd: string;
+  requestingParty: RequestingParty;
+  officerContactDetails?: string;
+  internalContactDetails?: string;
+  submitterName: string;
+  submitterContact: string;
+}
+
+export interface CreateVideoRequestInput {
+  locationId: string;
+  cameraAreas: string;
+  footageStart: string;
+  footageEnd: string;
+  requestingParty: RequestingParty;
+  officerContactDetails?: string;
+  internalContactDetails?: string;
+  submitterName: string;
+  submitterContact?: string;
+}
+
+export interface SubmitVideoRequestResponse {
+  id: string;
+  referenceCode: string;
 }
 
 // Reporting dashboard
