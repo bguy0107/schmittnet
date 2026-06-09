@@ -25,6 +25,10 @@ function ticketUrl(ticketId: string): string | undefined {
   return env.APP_URL ? `${env.APP_URL}/tickets/${ticketId}` : undefined;
 }
 
+function videoRequestUrl(videoRequestId: string): string | undefined {
+  return env.APP_URL ? `${env.APP_URL}/video-requests/${videoRequestId}` : undefined;
+}
+
 function makeEmbed(fields: Omit<DiscordEmbed, "footer" | "timestamp">): DiscordEmbed {
   return { ...fields, footer: { text: "SchmittNet Ticketing" }, timestamp: new Date().toISOString() };
 }
@@ -229,6 +233,7 @@ async function processJob(
     const body = `A video footage request (#${ref}) has been submitted at ${request.location.name} by ${partyLabel}.`;
     const dEmbed = makeEmbed({
       title: "📹 Video Footage Request",
+      url: videoRequestUrl(data.videoRequestId),
       color: 0xe67e22,
       fields: [
         { name: "Location", value: request.location.name },
