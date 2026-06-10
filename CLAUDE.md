@@ -45,8 +45,10 @@ npx prisma generate            # after any schema change
 npx prisma studio
 ```
 
-Deploy is automatic on push to `main` (GitHub Actions → SSH → `docker compose pull && up -d`).
-`main` = production, `staging` branch = staging.
+Deploys are manual: build the image from source on the target host with
+`docker compose -f infra/docker-compose.yml build && up -d` (see README). CI (GitHub Actions)
+runs lint/type-check/tests and pushes an image to GHCR on push to `main`/`staging`, but does not
+deploy. `main` = production, `staging` branch = staging.
 
 ## Conventions (enforce; see arch doc §7 for full list)
 

@@ -222,7 +222,7 @@ Media uploads (photo/video) should be stored in object storage (e.g., S3 or equi
 | --- | --- | --- | --- |
 | Q1 | What is the maximum file size for photo/video attachments? | Eng Lead | TBD — dependent on storage budget and mobile UX testing |
 | Q2 | Should the system support offline queuing if staff have no internet at time of submission? | Head of IT | TBD |
-| Q3 | Which authentication provider will be used for technician and owner accounts? | Eng Lead | Resolved: Auth.js v5 (Credentials) with server-side sessions for instant revocation — see Technical Architecture §6.3 |
+| Q3 | Which authentication provider will be used for technician and owner accounts? | Eng Lead | Resolved: custom email/password login with server-side sessions (opaque HttpOnly cookie, hash stored in Postgres) for instant revocation — see Technical Architecture §6.3 / ADR-006 |
 | Q4 | What is the approval workflow if the designated approver is unavailable? Is there a backup approver? | Owner A / Owner B | TBD |
 | Q5 | Should ticket history be retained indefinitely or archived after a set period? | Head of IT | TBD |
 | Q6 | Will any locations have dedicated IT or maintenance staff at launch, or is the shared model assumed for v1? | Head of IT | TBD |

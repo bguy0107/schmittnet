@@ -75,7 +75,7 @@ This document does not cover:
 | Runtime | Node.js 22 LTS | Long-term support; compatible with Next.js API routes |
 | Framework | Next.js 16.2.6 API Routes | Backend co-located with frontend in monorepo; no separate server process needed |
 | API Style | REST with OpenAPI spec | Simple, well-understood; easy to document and test |
-| Auth | NextAuth.js v5 | Session-based auth for technicians, owners, and super-admin; server-side sessions referenced by an opaque HttpOnly cookie (enables instant revocation). Pin a specific Auth.js v5 release (still beta) and verify Credentials + sessions + Next.js 16 proxy.ts. |
+| Auth | Custom server-side sessions (`auth.ts`, `src/lib/session.ts`, `session-repository.ts`) | Email/password login for technicians, owners, and super-admin; sessions stored in PostgreSQL and referenced by an opaque HttpOnly cookie (enables instant revocation). Auth.js v5 hard-codes JWT-only sessions for the Credentials provider (`UnsupportedStrategy` for `database` strategy), so this is a small custom layer rather than `next-auth` (ADR-006). |
 | ORM | Prisma 5.x | Type-safe database access; excellent PostgreSQL support; migration tooling built-in |
 | Background Jobs | BullMQ + Redis | Async notification dispatch (Discord webhooks, Gmail SMTP); prevents submission latency from notification delivery |
 | Testing | Vitest + Supertest | Unit tests for services; integration tests for API routes |
@@ -323,7 +323,7 @@ apps/web/src/
 
 - Base URL: `https://[yourdomain.com]/api`
 - All requests and responses use JSON (`Content-Type: application/json`)
-- Authenticated routes require a valid NextAuth.js session cookie
+- Authenticated routes require a valid session cookie (`schmittnet_session`)
 - Snake_case for JSON field names
 - ISO 8601 for all date/time fields
 - Errors return `{ error: { code, message, details } }` — consistent across all routes
@@ -333,7 +333,8 @@ apps/web/src/
 
 | Method | Endpoint | Auth Required | Description |
 | --- | --- | --- | --- |
-| POST | `/api/auth/[...nextauth]` | No | NextAuth.js login, session, and callback handlers |
+| POST | `/api/auth/login` | No | Validate credentials, create a server-side session, and set the session cookie |
+| POST | `/api/auth/logout` | Yes | Destroy the current session and clear the session cookie |
 | GET | `/api/tickets/submit/[token]` | No (QR token) | Validate location token and return location context for submission form |
 | POST | `/api/tickets/submit/[token]` | No (QR token) | Submit a new ticket with media upload; enqueues an Opened notification to the relevant technicians |
 | GET | `/api/tickets` | Yes | List tickets — filtered by role (technician sees all, owner sees their locations) |
@@ -354,7 +355,7 @@ apps/web/src/
 
 #### Auth Flow
 
-NextAuth.js v5 handles all authentication. Technicians, owners, owner staff, and the super-admin log in via email/password (Credentials provider). Sessions are server-side (stored in PostgreSQL and optionally cached in Redis) and referenced by an opaque, signed HttpOnly cookie with a 24-hour sliding TTL. Server-side sessions allow immediate revocation on logout, role change, or account deactivation — a deactivated user is locked out at once rather than waiting for a token to expire. No authentication is required for QR code ticket submission — the location token in the URL serves as the access mechanism for that flow.
+A custom session layer handles all authentication (`auth.ts` + `src/lib/session.ts` + `session-repository.ts`, ADR-006) — not Auth.js/NextAuth, since Auth.js v5 hard-codes JWT-only sessions for the Credentials provider (`UnsupportedStrategy` if `database` strategy is requested). Technicians, owners, owner staff, and the super-admin log in via email/password at `POST /api/auth/login`, which verifies the password (argon2) and creates a session row in PostgreSQL. The session is referenced by a random 32-byte token in an opaque HttpOnly cookie (`schmittnet_session`); only the SHA-256 hash of the token is stored in the database, so a database read alone can't forge or replay a session. Sessions have a fixed 24-hour expiry from creation (not a sliding TTL). Server-side sessions allow immediate revocation on logout, role change, or account deactivation — a deactivated user is locked out at once rather than waiting for a token to expire. No authentication is required for QR code ticket submission — the location token in the URL serves as the access mechanism for that flow.
 
 #### Authorization Model
 
@@ -440,7 +441,7 @@ Testing conventions:
 
 - QR submission endpoint rate-limited per location token (sliding window) with a secondary per-IP limit; many staff at one location may share a single NAT IP, so the per-token limit is primary. Duplicate-submission suppression and a lightweight anti-bot challenge guard against floods
 - QR tokens are cryptographically random (32 bytes, hex-encoded) — not sequential or guessable
-- All authenticated API routes verify a valid Auth.js session in the route/service layer; middleware is a convenience filter only and must not be the sole gate (Next.js middleware auth is bypassable — see CVE-2025-29927)
+- All authenticated API routes verify a valid session in the route/service layer; middleware (`proxy.ts`) is a convenience filter only and must not be the sole gate (Next.js middleware auth is bypassable — see CVE-2025-29927)
 - Owner data isolation enforced at the PostgreSQL query level via `owner_id` scoping
 - All user input validated and sanitized via Zod before processing or persisting
 - Secrets stored in environment variables only — never committed to the repository
@@ -454,7 +455,7 @@ Testing conventions:
 | Secret / Credential | Storage Location | Rotation Policy |
 | --- | --- | --- |
 | PostgreSQL credentials | VPS `.env` file (not in repo) + GitHub Actions secrets | On compromise |
-| NextAuth.js signing secret | VPS `.env` file + GitHub Actions secrets | Every 180 days |
+| Session token hashes | PostgreSQL `sessions` table (server-generated, not a configured secret) | N/A — revoked individually on logout/role change/deactivation |
 | Gmail SMTP credentials | VPS `.env` file + GitHub Actions secrets | On compromise or Google password change |
 | Discord webhook URLs | Database (per-user setting) | On demand via admin panel |
 | MinIO access/secret keys | VPS `.env` file + GitHub Actions secrets | On compromise |
@@ -549,10 +550,10 @@ Testing conventions:
 | --- | --- |
 | **Status** | Accepted |
 | **Date** | May 30, 2026 |
-| **Context** | Admins must be able to deactivate users, and role changes must take effect immediately. Stateless JWTs cannot be revoked server-side before they expire. |
-| **Decision** | Use server-side sessions (stored in PostgreSQL, optionally cached in Redis) referenced by an opaque HttpOnly cookie, rather than stateless JWT sessions. |
-| **Rationale** | Enables immediate revocation on logout, role change, or deactivation; avoids building a JWT denylist; session lookup is cheap at this scale. |
-| **Trade-offs** | Adds a session-store read per authenticated request (mitigated by the Redis cache) and slightly more server state than stateless JWT. |
+| **Context** | Admins must be able to deactivate users, and role changes must take effect immediately. Stateless JWTs cannot be revoked server-side before they expire. Auth.js v5 also hard-codes JWT-only sessions for the Credentials provider (`UnsupportedStrategy` if `database` strategy is requested), so it can't satisfy this requirement out of the box. |
+| **Decision** | Use server-side sessions (stored in PostgreSQL, referenced by a SHA-256-hashed opaque token in an HttpOnly cookie), implemented as a small custom layer (`auth.ts` + `src/lib/session.ts` + `session-repository.ts`) rather than `next-auth`. |
+| **Rationale** | Enables immediate revocation on logout, role change, or deactivation; avoids building a JWT denylist; session lookup is cheap at this scale; avoids fighting Auth.js v5's session-strategy constraints for a layer this small. |
+| **Trade-offs** | Adds a session-store read per authenticated request and slightly more server state than stateless JWT; the team owns the session lifecycle code instead of relying on a library. |
 
 ### ADR-007: Gmail SMTP for Email Notifications
 
@@ -663,6 +664,6 @@ docker compose logs -f web
 | Q5 | VPS specs: CPU, RAM, and disk sizing should be confirmed based on expected media volume and concurrent users. | High | Eng Lead to spec before infrastructure setup |
 | Q6 | Backup strategy: scheduled PostgreSQL dumps AND MinIO object-storage (media) backups to an off-host destination, with tested restore, must be defined. Media is required evidence and must not live only on the app host. | High | Head of IT — critical before production launch |
 | Q7 | Media retention period and who may view attachments (photos/videos may contain staff or customer PII)? | Medium | Head of IT — define access scope and purge policy |
-| Q8 | Pin and validate Auth.js v5 (still beta) with the Credentials provider, server-side sessions, and Next.js 16 proxy.ts before build. | High | Eng Lead — verify the compatibility matrix early |
+| Q8 | ~~Pin and validate Auth.js v5 with the Credentials provider, server-side sessions, and Next.js 16 proxy.ts before build.~~ Resolved: Auth.js v5 doesn't support database-backed sessions with the Credentials provider, so a custom session layer was built instead (ADR-006). | Resolved | — |
 
 *End of Document*

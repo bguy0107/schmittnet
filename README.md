@@ -2,6 +2,8 @@
 
 Restaurant IT & Maintenance Ticketing System — a mobile-first web app for 25 restaurant locations across two ownership groups. Store staff submit tickets by scanning a per-location QR code (no login required); technicians, owners, and a super-admin manage them via an authenticated dashboard.
 
+The same QR flow also covers **video footage requests** — staff submit a request for security camera footage (with a cancel option), and admins/owners track and resolve them from the dashboard.
+
 ---
 
 ## Quick start (local development)
@@ -116,7 +118,7 @@ docker compose -f infra/docker-compose.dev.yml down -v  # stop + wipe volumes
 | ORM | Prisma 5 + PostgreSQL 18 |
 | Queue | BullMQ + Redis 7 |
 | Storage | MinIO (S3-compatible) |
-| Auth | Auth.js v5 (Credentials, JWT) |
+| Auth | Custom server-side sessions (argon2 + opaque HttpOnly cookie, ADR-006) |
 | Notifications | Discord webhooks + Gmail SMTP (via BullMQ worker) |
 | Reverse proxy | Caddy (production) |
 | Deployment | Docker Compose (manual SSH) |
@@ -133,13 +135,17 @@ Copy `apps/web/.env.example` to `.env` at the repo root (for production) or `app
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | Postgres credentials (also read directly by the Postgres container) |
 | `REDIS_URL` | Redis connection string |
 | `MINIO_ENDPOINT` | MinIO hostname (`minio` inside Docker network, `localhost` for dev) |
-| `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` | MinIO root credentials |
+| `MINIO_PORT` | MinIO port (default: `9000`) |
+| `MINIO_USE_SSL` | Whether the app should connect to MinIO over TLS (default: `false`) |
+| `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY` | Credentials the app SDK uses to talk to MinIO |
+| `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` | Root credentials for the MinIO server itself (set via `env_file`) |
 | `MINIO_BUCKET` | Bucket name (default: `tickets`) |
-| `AUTH_SECRET` | 32-byte random string — `openssl rand -hex 32` |
-| `NEXTAUTH_URL` | Full public URL of the app (e.g. `https://tickets.example.com`) |
+| `MINIO_PUBLIC_URL` | Public base URL browsers use for presigned PUT/GET requests — must match the path Caddy proxies to `minio:9000` (e.g. `https://yourdomain.com/storage`) |
+| `APP_URL` | Public base URL used to build ticket links in Discord notifications (optional) |
 | `DOMAIN` | Hostname only, no protocol — used by Caddy for TLS (e.g. `tickets.example.com`) |
 | `GMAIL_USER` | Gmail address for email notifications (optional) |
 | `GMAIL_APP_PASSWORD` | Gmail app password (optional) |
+| `SENTRY_DSN` | Sentry DSN for error tracking (optional) |
 
 ---
 
@@ -190,9 +196,6 @@ Edit `/opt/schmittnet/.env`. The values that must change from the example defaul
 ```ini
 NODE_ENV=production
 
-# Replace with the host's LAN IP (or local hostname if using DNS)
-NEXTAUTH_URL=http://192.168.1.50
-
 # Use the Docker service name — containers communicate by service name, not localhost
 DATABASE_URL=postgresql://schmittnet:<POSTGRES_PASSWORD>@postgres:5432/schmittnet
 REDIS_URL=redis://redis:6379
@@ -208,9 +211,14 @@ MINIO_ROOT_USER=<strong-username>
 MINIO_ROOT_PASSWORD=<strong-password>
 MINIO_ACCESS_KEY=<strong-username>
 MINIO_SECRET_KEY=<strong-password>
+MINIO_BUCKET=tickets
 
-# Generate with: openssl rand -hex 32
-AUTH_SECRET=<generated-secret>
+# Public URL browsers use for presigned uploads — replace with the host's LAN IP
+# (or local hostname) plus the /storage path Caddy proxies to MinIO
+MINIO_PUBLIC_URL=http://192.168.1.50/storage
+
+# Public-facing base URL — used to build ticket links in Discord notifications (optional)
+APP_URL=http://192.168.1.50
 
 # Optional — email notifications
 GMAIL_USER=your-gmail@gmail.com
@@ -224,7 +232,16 @@ The default `infra/Caddyfile` is configured for HTTPS with a public domain. For 
 ```diff
 -{$DOMAIN} {
 +:80 {
-     reverse_proxy web:3000
+     handle /storage/* {
+         uri strip_prefix /storage
+         reverse_proxy minio:9000 {
+             header_up Host minio:9000
+         }
+     }
+
+     handle {
+         reverse_proxy web:3000
+     }
 
      header {
 -        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
@@ -357,7 +374,6 @@ Edit `/opt/schmittnet/.env`:
 
 ```ini
 NODE_ENV=production
-NEXTAUTH_URL=https://tickets.yourcompany.com
 DOMAIN=tickets.yourcompany.com
 
 # Docker service names — do not use localhost
@@ -376,8 +392,11 @@ MINIO_ACCESS_KEY=<strong-username>
 MINIO_SECRET_KEY=<strong-password>
 MINIO_BUCKET=tickets
 
-# Generate with: openssl rand -hex 32
-AUTH_SECRET=<generated-secret>
+# Public URL browsers use for presigned uploads — same domain, /storage path
+MINIO_PUBLIC_URL=https://tickets.yourcompany.com/storage
+
+# Public-facing base URL — used to build ticket links in Discord notifications (optional)
+APP_URL=https://tickets.yourcompany.com
 
 # Optional — email notifications
 GMAIL_USER=your-gmail@gmail.com
