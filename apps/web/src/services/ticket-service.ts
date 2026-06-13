@@ -354,6 +354,13 @@ export const ticketService = {
 
     await this.assertOwnerScope(ticket.location.id, actorRole, actorOwnerId);
 
+    if (actorRole === "OWNER_STAFF") {
+      const assignedLocationIds = await userRepository.getAssignedLocationIds(actorId);
+      if (assignedLocationIds.length > 0 && !assignedLocationIds.includes(ticket.location.id)) {
+        throw new ForbiddenError("You are not assigned to approve tickets for this location");
+      }
+    }
+
     const result = await ticketRepository.resolveApproval(approvalId, actorId, ticketId, status, notes);
     if (!result) {
       throw new ConflictError("Approval not found, already resolved, or does not belong to this ticket");
@@ -361,6 +368,7 @@ export const ticketService = {
 
     if (status === "APPROVED") {
       await notificationService.enqueueResolved(ticketId, result.ticket.locationId);
+      await notificationService.enqueueTicketApproved(ticketId, ticket.category);
     }
 
     logger.info("Approval resolved", {

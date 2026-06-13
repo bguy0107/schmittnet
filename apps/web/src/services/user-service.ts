@@ -2,8 +2,9 @@ import { z } from "zod";
 import { hash } from "@node-rs/argon2";
 import { prisma } from "@/src/lib/prisma";
 import { userRepository } from "@/src/repositories/user-repository";
+import { locationRepository } from "@/src/repositories/location-repository";
 import { notificationService } from "@/src/services/notification-service";
-import { ForbiddenError, NotFoundError, ConflictError } from "@/src/lib/errors";
+import { ForbiddenError, NotFoundError, ConflictError, ValidationError } from "@/src/lib/errors";
 import type { Role } from "@schmittnet/types";
 
 const createUserSchema = z.object({
@@ -11,20 +12,52 @@ const createUserSchema = z.object({
   name: z.string().min(2).max(100),
   role: z.enum(["SUPER_ADMIN", "OWNER", "OWNER_STAFF", "TECHNICIAN"]),
   categories: z.array(z.enum(["IT", "MAINTENANCE"])).optional(),
-  ownerId: z.string().uuid().optional(),
+  // Owner.id is a free-form string PK (seed data overrides the uuid() default
+  // with human-readable ids), so don't require uuid format here.
+  ownerId: z.string().min(1).optional(),
   password: z.string().min(8),
   notificationEmail: z.boolean().default(false),
+  assignedLocationIds: z.array(z.string().uuid()).optional(),
 });
 
 const updateUserSchema = z.object({
   name: z.string().min(2).max(100).optional(),
   role: z.enum(["SUPER_ADMIN", "OWNER", "OWNER_STAFF", "TECHNICIAN"]).optional(),
   categories: z.array(z.enum(["IT", "MAINTENANCE"])).optional(),
-  ownerId: z.string().uuid().nullable().optional(),
+  ownerId: z.string().min(1).nullable().optional(),
   isActive: z.boolean().optional(),
   notificationEmail: z.boolean().optional(),
   password: z.string().min(8).optional(),
+  assignedLocationIds: z.array(z.string().uuid()).optional(),
 });
+
+// Per-location approval-authority assignment only applies to OWNER_STAFF; an
+// empty/omitted list means "all of the owner's locations" (see
+// ticket-service.resolveApproval). Any other role gets its assignments cleared
+// so stale rows don't linger after a role change.
+async function syncAssignedLocations(
+  userId: string,
+  role: Role,
+  ownerId: string | null,
+  assignedLocationIds?: string[],
+) {
+  if (role !== "OWNER_STAFF") {
+    await userRepository.setAssignedLocations(userId, []);
+    return;
+  }
+  if (assignedLocationIds === undefined) return;
+  if (assignedLocationIds.length === 0) {
+    await userRepository.setAssignedLocations(userId, []);
+    return;
+  }
+
+  if (!ownerId) throw new ValidationError("Cannot assign locations without an owner");
+  const validIds = await locationRepository.getLocationIdsByOwner(ownerId);
+  const invalid = assignedLocationIds.filter((id) => !validIds.includes(id));
+  if (invalid.length > 0) throw new ValidationError("One or more locations do not belong to this owner");
+
+  await userRepository.setAssignedLocations(userId, assignedLocationIds);
+}
 
 export const userService = {
   async listUsers(actorRole: Role) {
@@ -57,6 +90,8 @@ export const userService = {
       passwordHash,
       notificationEmail: data.notificationEmail,
     });
+
+    await syncAssignedLocations(user.id, data.role as Role, ownerId ?? null, data.assignedLocationIds);
 
     await notificationService.enqueueUserWelcome(data.email, data.name, data.password);
 
@@ -107,6 +142,10 @@ export const userService = {
     }
 
     const user = await userRepository.update(id, updates);
+
+    if (data.assignedLocationIds !== undefined || (existing.role === "OWNER_STAFF" && effectiveRole !== "OWNER_STAFF")) {
+      await syncAssignedLocations(id, effectiveRole, effectiveOwnerId, data.assignedLocationIds);
+    }
 
     if (data.isActive === false && existing.isActive) {
       await userRepository.unassignAndReopenTickets(id);

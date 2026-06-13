@@ -16,21 +16,35 @@ const userSelect = {
   updatedAt: true,
 } satisfies Prisma.UserSelect;
 
-export type UserRow = Prisma.UserGetPayload<{ select: typeof userSelect }>;
+const userSelectWithLocations = {
+  ...userSelect,
+  assignedLocations: { select: { locationId: true } },
+} satisfies Prisma.UserSelect;
+
+export type UserRow = Prisma.UserGetPayload<{ select: typeof userSelect }> & {
+  assignedLocationIds: string[];
+};
+
+function toUserRow(row: Prisma.UserGetPayload<{ select: typeof userSelectWithLocations }>): UserRow {
+  const { assignedLocations, ...rest } = row;
+  return { ...rest, assignedLocationIds: assignedLocations.map((a) => a.locationId) };
+}
 
 export const userRepository = {
   async findAll() {
-    return prisma.user.findMany({
-      select: userSelect,
+    const users = await prisma.user.findMany({
+      select: userSelectWithLocations,
       orderBy: { name: "asc" },
     });
+    return users.map(toUserRow);
   },
 
   async findById(id: string) {
-    return prisma.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { id },
-      select: userSelect,
+      select: userSelectWithLocations,
     });
+    return user ? toUserRow(user) : null;
   },
 
   async findByEmail(email: string) {
@@ -149,5 +163,27 @@ export const userRepository = {
 
   async delete(id: string) {
     await prisma.user.delete({ where: { id } });
+  },
+
+  async getAssignedLocationIds(userId: string): Promise<string[]> {
+    const rows = await prisma.userLocation.findMany({
+      where: { userId },
+      select: { locationId: true },
+    });
+    return rows.map((r) => r.locationId);
+  },
+
+  async setAssignedLocations(userId: string, locationIds: string[]): Promise<void> {
+    await prisma.$transaction([
+      prisma.userLocation.deleteMany({ where: { userId } }),
+      ...(locationIds.length > 0
+        ? [
+            prisma.userLocation.createMany({
+              data: locationIds.map((locationId) => ({ userId, locationId })),
+              skipDuplicates: true,
+            }),
+          ]
+        : []),
+    ]);
   },
 };

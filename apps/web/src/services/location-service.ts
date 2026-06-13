@@ -6,7 +6,9 @@ import type { Role } from "@schmittnet/types";
 
 const createLocationSchema = z.object({
   name: z.string().min(2).max(100),
-  ownerId: z.string().uuid(),
+  // Owner.id is a free-form string PK (seed data overrides the uuid() default
+  // with human-readable ids), so don't require uuid format here.
+  ownerId: z.string().min(1),
   address: z.string().max(200).optional(),
 });
 

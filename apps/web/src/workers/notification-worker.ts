@@ -167,8 +167,11 @@ async function processJob(
     const staff = await prisma.user.findMany({
       where: {
         ownerId: ticket.location.ownerId,
-        role: { in: ["OWNER", "OWNER_STAFF"] },
         isActive: true,
+        // Both approval and resolved notifications go to OWNER_STAFF assigned to
+        // this ticket's location only — they're the ones who can act on it.
+        role: "OWNER_STAFF",
+        assignedLocations: { some: { locationId: data.locationId } },
       },
       select: { email: true, notificationEmail: true },
     });
@@ -208,6 +211,34 @@ async function processJob(
         { name: "Location", value: ticket.location.name },
         { name: "Issue", value: truncate(ticket.description) },
         { name: "Assigned", value: ticket.assignee?.name ?? "Unknown" },
+        { name: "Reference", value: `#${ref}` },
+      ],
+    });
+
+    await notifyDepartment(data.category, dEmbed);
+  }
+
+  if (data.type === "TICKET_APPROVED") {
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: data.ticketId },
+      select: {
+        id: true,
+        description: true,
+        category: true,
+        location: { select: { name: true } },
+      },
+    });
+    if (!ticket) return;
+
+    const ref = data.ticketId.slice(0, 8).toUpperCase();
+    const label = ticket.category === "IT" ? "💻 IT" : "🔧 Maintenance";
+    const dEmbed = makeEmbed({
+      title: `${label} Ticket Approved`,
+      url: ticketUrl(ticket.id),
+      color: 0x57f287,
+      fields: [
+        { name: "Location", value: ticket.location.name },
+        { name: "Issue", value: truncate(ticket.description) },
         { name: "Reference", value: `#${ref}` },
       ],
     });

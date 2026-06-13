@@ -28,6 +28,7 @@ interface UserRow {
   ownerId: string | null;
   notificationEmail: boolean;
   lastLoginAt: string | null;
+  assignedLocationIds: string[];
 }
 
 const editUserSchema = z.object({
@@ -42,15 +43,18 @@ type EditUserData = z.infer<typeof editUserSchema>;
 function EditUserPanel({
   user,
   owners,
+  locations,
   onClose,
 }: {
   user: UserRow;
   owners: UserRow[];
+  locations: LocationOption[];
   onClose: () => void;
 }) {
   const qc = useQueryClient();
   const [editError, setEditError] = useState<string | null>(null);
   const [editCategories, setEditCategories] = useState<string[]>(user.categories);
+  const [editAssignedLocations, setEditAssignedLocations] = useState<string[]>(user.assignedLocationIds);
 
   const updateUser = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
@@ -79,8 +83,16 @@ function EditUserPanel({
   });
 
   const watchedRole = useWatch({ control, name: "role" });
+  const watchedOwnerId = useWatch({ control, name: "ownerId" });
   const showCategories = watchedRole === "TECHNICIAN";
   const showOwnerScope = watchedRole === "TECHNICIAN" || watchedRole === "OWNER_STAFF";
+  const showAssignedLocations = watchedRole === "OWNER_STAFF";
+
+  function toggleAssignedLocation(locationId: string) {
+    setEditAssignedLocations((prev) =>
+      prev.includes(locationId) ? prev.filter((id) => id !== locationId) : [...prev, locationId],
+    );
+  }
 
   function onSubmit(data: EditUserData) {
     const payload: Record<string, unknown> = {
@@ -89,6 +101,7 @@ function EditUserPanel({
       notificationEmail: data.notificationEmail,
       ownerId: showOwnerScope ? (data.ownerId || null) : null,
       categories: showCategories ? editCategories : [],
+      assignedLocationIds: showAssignedLocations ? editAssignedLocations : [],
     };
     if (data.password) payload.password = data.password;
     updateUser.mutate(payload);
@@ -181,7 +194,16 @@ function EditUserPanel({
             </div>
           )}
 
-          <label className="flex cursor-pointer items-center gap-2 text-sm">
+          {showAssignedLocations && (
+            <AssignedLocationsField
+              locations={locations}
+              ownerId={watchedOwnerId || undefined}
+              selected={editAssignedLocations}
+              onToggle={toggleAssignedLocation}
+            />
+          )}
+
+          <label className="flex cursor-pointer items-center gap-2 border-t pt-4 text-sm">
             <input
               type="checkbox"
               className="h-4 w-4 rounded border-gray-300 accent-primary"
@@ -224,11 +246,60 @@ const createUserSchema = z.object({
 });
 type CreateUserData = z.infer<typeof createUserSchema>;
 
+interface LocationOption {
+  id: string;
+  name: string;
+  owner: { id: string; name: string };
+}
+
+function AssignedLocationsField({
+  locations,
+  ownerId,
+  selected,
+  onToggle,
+}: {
+  locations: LocationOption[];
+  ownerId: string | undefined;
+  selected: string[];
+  onToggle: (locationId: string) => void;
+}) {
+  const ownerLocations = locations.filter((l) => l.owner.id === ownerId);
+
+  return (
+    <div className="space-y-2 sm:col-span-2">
+      <Label>
+        Assigned locations{" "}
+        <span className="text-gray-400 dark:text-gray-500">(optional — leave empty to approve for all locations)</span>
+      </Label>
+      {!ownerId ? (
+        <p className="text-xs text-gray-400 dark:text-gray-500">Select an owner scope first.</p>
+      ) : ownerLocations.length === 0 ? (
+        <p className="text-xs text-gray-400 dark:text-gray-500">This owner has no locations yet.</p>
+      ) : (
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {ownerLocations.map((loc) => (
+            <label key={loc.id} className="flex cursor-pointer items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300 accent-primary"
+                checked={selected.includes(loc.id)}
+                onChange={() => onToggle(loc.id)}
+              />
+              {loc.name}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function UsersTab() {
   const qc = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
   const [editingUser, setEditingUser] = useState<UserRow | null>(null);
   const [userView, setUserView] = useState<"active" | "deactivated">("active");
 
@@ -237,16 +308,22 @@ function UsersTab() {
     queryFn: () => fetchApi<UserRow[]>("/api/users"),
   });
 
+  const { data: locations } = useQuery({
+    queryKey: ["admin-locations"],
+    queryFn: () => fetchApi<LocationOption[]>("/api/locations"),
+  });
+
   const owners = users?.filter((u) => u.role === "OWNER" && u.isActive) ?? [];
 
   const createUser = useMutation({
-    mutationFn: (body: CreateUserData & { categories?: string[] }) =>
+    mutationFn: (body: CreateUserData & { categories?: string[]; assignedLocationIds?: string[] }) =>
       fetchApi("/api/users", { method: "POST", body: JSON.stringify(body) }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["admin-users"] });
       setShowForm(false);
       setFormError(null);
       setSelectedCategories([]);
+      setSelectedLocations([]);
     },
     onError: (err) => setFormError(err instanceof Error ? err.message : "Failed to create user"),
   });
@@ -268,12 +345,20 @@ function UsersTab() {
   });
 
   const watchedRole = useWatch({ control, name: "role" });
+  const watchedOwnerId = useWatch({ control, name: "ownerId" });
   const showCategories = watchedRole === "TECHNICIAN";
   const showOwnerScope = watchedRole === "TECHNICIAN" || watchedRole === "OWNER_STAFF";
+  const showAssignedLocations = watchedRole === "OWNER_STAFF";
 
   function handleCategoryToggle(cat: string) {
     setSelectedCategories((prev) =>
       prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat],
+    );
+  }
+
+  function toggleLocation(locationId: string) {
+    setSelectedLocations((prev) =>
+      prev.includes(locationId) ? prev.filter((id) => id !== locationId) : [...prev, locationId],
     );
   }
 
@@ -282,6 +367,7 @@ function UsersTab() {
       ...data,
       ownerId: data.ownerId || undefined,
       categories: showCategories && selectedCategories.length > 0 ? selectedCategories : undefined,
+      assignedLocationIds: showAssignedLocations && selectedLocations.length > 0 ? selectedLocations : undefined,
     };
     createUser.mutate(payload);
   }
@@ -328,6 +414,7 @@ function UsersTab() {
               reset({ role: "TECHNICIAN" });
               setFormError(null);
               setSelectedCategories([]);
+              setSelectedLocations([]);
             }}
           >
             <Plus className="h-4 w-4" />
@@ -424,6 +511,15 @@ function UsersTab() {
                 )}
               </div>
             )}
+
+            {showAssignedLocations && (
+              <AssignedLocationsField
+                locations={locations ?? []}
+                ownerId={watchedOwnerId || undefined}
+                selected={selectedLocations}
+                onToggle={toggleLocation}
+              />
+            )}
           </div>
 
           <div className="flex gap-2">
@@ -437,6 +533,7 @@ function UsersTab() {
               onClick={() => {
                 setShowForm(false);
                 setSelectedCategories([]);
+                setSelectedLocations([]);
               }}
             >
               Cancel
@@ -537,6 +634,7 @@ function UsersTab() {
         <EditUserPanel
           user={editingUser}
           owners={owners}
+          locations={locations ?? []}
           onClose={() => setEditingUser(null)}
         />
       )}
@@ -552,7 +650,7 @@ interface LocationRow {
   address: string | null;
   qrActive: boolean;
   qrToken: string;
-  owner: { name: string };
+  owner: { id: string; name: string };
 }
 
 const editLocationSchema = z.object({

@@ -123,6 +123,7 @@ model User {
   history            TicketHistory[]
   approvalsRequested TicketApproval[] @relation("RequestedBy")
   approvalsActioned  TicketApproval[] @relation("ActionedBy")
+  assignedLocations  UserLocation[]
   submittedVideoRequests VideoRequest[] @relation("VideoRequestSubmitter")
   resolvedVideoRequests  VideoRequest[] @relation("VideoRequestResolver")
   cancelledVideoRequests VideoRequest[] @relation("VideoRequestCanceller")
@@ -143,8 +144,25 @@ model Location {
   owner         Owner         @relation(fields: [ownerId], references: [id])
   tickets       Ticket[]
   videoRequests VideoRequest[]
+  assignedUsers UserLocation[]
 
   @@map("locations")
+}
+
+// Per-location approval-authority assignment for OWNER_STAFF users. An empty
+// set for a user means "all of the owner's locations" (backward compatible) —
+// see ticket-service.resolveApproval.
+model UserLocation {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  locationId String   @map("location_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, locationId])
+  @@map("user_locations")
 }
 
 model Ticket {
