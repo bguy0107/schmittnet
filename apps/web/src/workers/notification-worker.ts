@@ -220,15 +220,21 @@ async function processJob(
   }
 
   if (data.type === "TICKET_APPROVED") {
-    const ticket = await prisma.ticket.findUnique({
-      where: { id: data.ticketId },
-      select: {
-        id: true,
-        description: true,
-        category: true,
-        location: { select: { name: true } },
-      },
-    });
+    const [ticket, techs] = await Promise.all([
+      prisma.ticket.findUnique({
+        where: { id: data.ticketId },
+        select: {
+          id: true,
+          description: true,
+          category: true,
+          location: { select: { name: true } },
+        },
+      }),
+      prisma.user.findMany({
+        where: { role: "TECHNICIAN", isActive: true, categories: { has: data.category } },
+        select: { email: true, notificationEmail: true },
+      }),
+    ]);
     if (!ticket) return;
 
     const ref = data.ticketId.slice(0, 8).toUpperCase();
@@ -244,7 +250,14 @@ async function processJob(
       ],
     });
 
-    await notifyDepartment(data.category, dEmbed);
+    const subject = `[SchmittNet] Ticket Approved — ${ticket.location.name}`;
+    const url = ticketUrl(ticket.id);
+    const body = `Ticket #${ref} at ${ticket.location.name} has been approved.${url ? `\n\n${url}` : ""}`;
+
+    await Promise.all([
+      notifyUsers(techs, subject, body, emailTransport),
+      notifyDepartment(data.category, dEmbed),
+    ]);
   }
 
   if (data.type === "VIDEO_REQUEST_OPENED") {

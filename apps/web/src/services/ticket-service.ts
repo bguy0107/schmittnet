@@ -367,7 +367,6 @@ export const ticketService = {
     }
 
     if (status === "APPROVED") {
-      await notificationService.enqueueResolved(ticketId, result.ticket.locationId);
       await notificationService.enqueueTicketApproved(ticketId, ticket.category);
     }
 
