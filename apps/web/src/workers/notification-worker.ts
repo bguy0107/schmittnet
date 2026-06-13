@@ -181,9 +181,10 @@ async function processJob(
     const subject = isApproval
       ? `[SchmittNet] Approval Required — ${ticket.location.name}`
       : `[SchmittNet] Ticket Resolved — ${ticket.location.name}`;
+    const url = ticketUrl(data.ticketId);
     const body = isApproval
-      ? `Ticket #${ref} at ${ticket.location.name} is awaiting budget approval.`
-      : `Ticket #${ref} at ${ticket.location.name} has been resolved.`;
+      ? `Ticket #${ref} at ${ticket.location.name} is awaiting budget approval.${url ? `\n\n${url}` : ""}`
+      : `Ticket #${ref} at ${ticket.location.name} has been resolved.${url ? `\n\n${url}` : ""}`;
 
     await notifyUsers(staff, subject, body, emailTransport);
   }

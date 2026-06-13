@@ -458,7 +458,7 @@ export function TicketDetail({ ticketId, userId, role }: Props) {
                 {!approvalAction ? (
                   <div className="flex gap-2">
                     <Button size="sm" onClick={() => setApprovalAction("APPROVE")}>Approve</Button>
-                    <Button variant="outline" size="sm" onClick={() => setApprovalAction("DECLINE")}>
+                    <Button variant="destructive" size="sm" onClick={() => setApprovalAction("DECLINE")}>
                       Decline
                     </Button>
                   </div>
