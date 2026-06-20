@@ -647,6 +647,7 @@ function UsersTab() {
 interface LocationRow {
   id: string;
   name: string;
+  locationNumber: number | null;
   address: string | null;
   qrActive: boolean;
   qrToken: string;
@@ -655,6 +656,7 @@ interface LocationRow {
 
 const editLocationSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(100),
+  locationNumber: z.coerce.number().int().positive("Must be a positive integer").optional().or(z.literal("").transform(() => undefined)),
   address: z.string().max(200).optional(),
   qrActive: z.boolean(),
 });
@@ -710,6 +712,7 @@ function EditLocationPanel({
     resolver: zodResolver(editLocationSchema),
     defaultValues: {
       name: location.name,
+      locationNumber: location.locationNumber ?? ("" as unknown as undefined),
       address: location.address ?? "",
       qrActive: location.qrActive,
     },
@@ -718,6 +721,7 @@ function EditLocationPanel({
   function onSubmit(data: EditLocationData) {
     updateLocation.mutate({
       name: data.name,
+      locationNumber: data.locationNumber,
       address: data.address || undefined,
       qrActive: data.qrActive,
     });
@@ -750,6 +754,12 @@ function EditLocationPanel({
             <Label htmlFor="el-name">Location name</Label>
             <Input id="el-name" {...register("name")} />
             {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="el-number">Location number <span className="text-gray-400 dark:text-gray-500">(optional)</span></Label>
+            <Input id="el-number" type="number" min={1} {...register("locationNumber")} />
+            {errors.locationNumber && <p className="text-xs text-destructive">{errors.locationNumber.message}</p>}
           </div>
 
           <div className="space-y-1">
@@ -828,7 +838,8 @@ function EditLocationPanel({
 
 const createLocationSchema = z.object({
   name: z.string().min(2),
-  ownerId: z.string().uuid("Select an owner"),
+  locationNumber: z.coerce.number({ required_error: "Required", invalid_type_error: "Must be a number" }).int().positive("Must be a positive integer"),
+  ownerId: z.string().min(1, "Select an owner"),
   address: z.string().optional(),
 });
 type CreateLocationData = z.infer<typeof createLocationSchema>;
@@ -911,6 +922,11 @@ function LocationsTab() {
               {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
             </div>
             <div className="space-y-1">
+              <Label htmlFor="l-number">Location number</Label>
+              <Input id="l-number" type="number" min={1} {...register("locationNumber")} />
+              {errors.locationNumber && <p className="text-xs text-destructive">{errors.locationNumber.message}</p>}
+            </div>
+            <div className="space-y-1">
               <Label htmlFor="l-owner">Owner</Label>
               <select
                 id="l-owner"
@@ -967,7 +983,12 @@ function LocationsTab() {
               onClick={() => setEditingLocation(loc)}
             >
               <div>
-                <p className="font-medium text-gray-900 dark:text-gray-100">{loc.name}</p>
+                <p className="font-medium text-gray-900 dark:text-gray-100">
+                  {loc.locationNumber != null && (
+                    <span className="mr-2 text-gray-400 dark:text-gray-500">#{loc.locationNumber}</span>
+                  )}
+                  {loc.name}
+                </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {loc.owner.name}
                   {loc.address ? ` · ${loc.address}` : ""}

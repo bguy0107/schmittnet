@@ -8,6 +8,8 @@ import {
   Priority,
   HistoryEntryType,
   ApprovalStatus,
+  VideoRequestStatus,
+  RequestingParty,
 } from "@prisma/client";
 import { hash } from "@node-rs/argon2";
 import { createHash } from "crypto";
@@ -36,30 +38,30 @@ async function main() {
 
   // Locations — upsert on qrToken (unique) so seed is idempotent
   const locationsA = [
-    { name: "Location A-1 — Downtown", address: "100 Main St" },
-    { name: "Location A-2 — Westside", address: "200 West Ave" },
-    { name: "Location A-3 — Airport", address: "300 Airport Blvd" },
+    { name: "Location A-1 — Downtown", address: "100 Main St", locationNumber: 1 },
+    { name: "Location A-2 — Westside", address: "200 West Ave", locationNumber: 2 },
+    { name: "Location A-3 — Airport", address: "300 Airport Blvd", locationNumber: 3 },
   ];
   for (const loc of locationsA) {
     const qrToken = deterministicToken(loc.name);
     await prisma.location.upsert({
       where: { qrToken },
-      update: { name: loc.name },
-      create: { name: loc.name, address: loc.address, ownerId: ownerA.id, qrToken },
+      update: { name: loc.name, locationNumber: loc.locationNumber },
+      create: { name: loc.name, address: loc.address, locationNumber: loc.locationNumber, ownerId: ownerA.id, qrToken },
     });
   }
 
   const locationsB = [
-    { name: "Location B-1 — Northgate", address: "400 North Rd" },
-    { name: "Location B-2 — Southpark", address: "500 South Park Dr" },
-    { name: "Location B-3 — Eastfield", address: "600 East Field Ln" },
+    { name: "Location B-1 — Northgate", address: "400 North Rd", locationNumber: 4 },
+    { name: "Location B-2 — Southpark", address: "500 South Park Dr", locationNumber: 5 },
+    { name: "Location B-3 — Eastfield", address: "600 East Field Ln", locationNumber: 6 },
   ];
   for (const loc of locationsB) {
     const qrToken = deterministicToken(loc.name);
     await prisma.location.upsert({
       where: { qrToken },
-      update: { name: loc.name },
-      create: { name: loc.name, address: loc.address, ownerId: ownerB.id, qrToken },
+      update: { name: loc.name, locationNumber: loc.locationNumber },
+      create: { name: loc.name, address: loc.address, locationNumber: loc.locationNumber, ownerId: ownerB.id, qrToken },
     });
   }
 
@@ -110,13 +112,32 @@ async function main() {
     },
   });
 
-  // Fetch seeded entities needed for ticket relations
+  // OWNER_STAFF for group A — scoped to locations A-1 and A-2 only (not A-3).
+  // Demonstrates per-location approval authority vs. full-owner access.
+  await prisma.user.upsert({
+    where: { email: "owner-a-staff@schmittnet.local" },
+    update: {},
+    create: {
+      email: "owner-a-staff@schmittnet.local",
+      name: "Owner A Staff",
+      role: Role.OWNER_STAFF,
+      ownerId: ownerA.id,
+      notificationEmail: true,
+      passwordHash: await hash("OwnerAStaff1234!"),
+    },
+  });
+
+  // Fetch seeded entities needed for relations
   const tech = await prisma.user.findUniqueOrThrow({
     where: { email: "tech@schmittnet.local" },
     select: { id: true },
   });
   const ownerAUser = await prisma.user.findUniqueOrThrow({
     where: { email: "owner-a@schmittnet.local" },
+    select: { id: true },
+  });
+  const ownerAStaffUser = await prisma.user.findUniqueOrThrow({
+    where: { email: "owner-a-staff@schmittnet.local" },
     select: { id: true },
   });
   const locA1 = await prisma.location.findUniqueOrThrow({ where: { qrToken: deterministicToken("Location A-1 — Downtown") }, select: { id: true } });
@@ -497,13 +518,73 @@ async function main() {
     },
   });
 
+  // ── Per-location approval scoping ────────────────────────────────────────────
+  //
+  // owner-a-staff is scoped to A-1 and A-2 only. A-3 falls back to the full
+  // OWNER (owner-a) for approvals. An empty UserLocation set means all locations.
+  await prisma.userLocation.upsert({
+    where: { userId_locationId: { userId: ownerAStaffUser.id, locationId: locA1.id } },
+    update: {},
+    create: { userId: ownerAStaffUser.id, locationId: locA1.id },
+  });
+  await prisma.userLocation.upsert({
+    where: { userId_locationId: { userId: ownerAStaffUser.id, locationId: locA2.id } },
+    update: {},
+    create: { userId: ownerAStaffUser.id, locationId: locA2.id },
+  });
+
+  // ── Video requests ────────────────────────────────────────────────────────────
+
+  // OPEN — law enforcement request, still pending
+  await prisma.videoRequest.upsert({
+    where: { id: "vr-seed-01" },
+    update: {},
+    create: {
+      id: "vr-seed-01",
+      locationId: locA1.id,
+      cameraAreas: "Front entrance, parking lot east side",
+      footageStart: new Date(now.getTime() - 2 * 86_400_000 - 4 * 3600_000),
+      footageEnd: new Date(now.getTime() - 2 * 86_400_000 - 2 * 3600_000),
+      requestingParty: RequestingParty.LAW_ENFORCEMENT,
+      officerContactDetails: "Det. Rivera, Badge #4412, (555) 800-1234",
+      submitterName: "Jane Smith",
+      submitterContact: "jane@downtown.local",
+      status: VideoRequestStatus.OPEN,
+      createdAt: daysAgo(2),
+    },
+  });
+
+  // RESOLVED — internal request, footage exported
+  await prisma.videoRequest.upsert({
+    where: { id: "vr-seed-02" },
+    update: {},
+    create: {
+      id: "vr-seed-02",
+      locationId: locB1.id,
+      cameraAreas: "Kitchen corridor, walk-in entrance",
+      footageStart: new Date(now.getTime() - 5 * 86_400_000 - 3 * 3600_000),
+      footageEnd: new Date(now.getTime() - 5 * 86_400_000 - 1 * 3600_000),
+      requestingParty: RequestingParty.INTERNAL,
+      internalContactDetails: "GM Mike Torres, (555) 900-5678",
+      submitterName: "Mike Torres",
+      submitterContact: "mike@northgate.local",
+      submittedById: ownerAUser.id,
+      status: VideoRequestStatus.RESOLVED,
+      resolutionNote: "Footage exported to USB and handed to store manager.",
+      resolvedById: ownerAUser.id,
+      resolvedAt: daysAgo(4),
+      createdAt: daysAgo(5),
+    },
+  });
+
   // Print the QR token for Location A-1 — useful for E2E tests
   const a1Token = deterministicToken("Location A-1 — Downtown");
   console.log("\nSeed complete. Test accounts:");
-  console.log("  admin@schmittnet.local   / Admin1234!");
-  console.log("  tech@schmittnet.local    / Tech1234!");
-  console.log("  owner-a@schmittnet.local / OwnerA1234!");
-  console.log("  owner-b@schmittnet.local / OwnerB1234!");
+  console.log("  admin@schmittnet.local          / Admin1234!");
+  console.log("  tech@schmittnet.local           / Tech1234!");
+  console.log("  owner-a@schmittnet.local        / OwnerA1234!");
+  console.log("  owner-a-staff@schmittnet.local  / OwnerAStaff1234!  (scoped to A-1 + A-2)");
+  console.log("  owner-b@schmittnet.local        / OwnerB1234!");
   console.log(`\nSample QR URL: http://localhost:3000/submit/${a1Token}`);
 }
 

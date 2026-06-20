@@ -41,17 +41,26 @@ App runs at **http://localhost:3000**
 | `admin@schmittnet.local` | `Admin1234!` | Super Admin | Full access — users, locations, QR codes, all tickets |
 | `tech@schmittnet.local` | `Tech1234!` | Technician | All tickets (IT + Maintenance), status updates, notes |
 | `owner-a@schmittnet.local` | `OwnerA1234!` | Owner | Group A locations only, budget approvals, dashboard |
+| `owner-a-staff@schmittnet.local` | `OwnerAStaff1234!` | Owner Staff | Group A — **scoped to locations #1 and #2 only** (not #3); approval notifications enabled |
 | `owner-b@schmittnet.local` | `OwnerB1234!` | Owner | Group B locations only, budget approvals, dashboard |
 
 Sign in at **http://localhost:3000/login**
 
-### Sample QR submission URL (Location A-1)
+### Sample QR submission URL (Location #1 — Downtown)
 
 ```
 http://localhost:3000/submit/ab02cf652a54c91075aa582684b4d016644a5c976804eed8e559e7d5172dd9fe
 ```
 
 All seeded QR tokens are deterministic (SHA-256 of location name), so they stay the same across re-seeds.
+
+### Seeded sample data
+
+| Type | What's seeded |
+|---|---|
+| Tickets | 9 tickets across all statuses (OPEN, IN_PROGRESS, ON_HOLD, AWAITING_APPROVAL, APPROVED, RESOLVED, CANCELLED) |
+| Video requests | 2 requests — one OPEN (law enforcement, location #1), one RESOLVED (internal, location #4) |
+| Locations | 6 locations numbered #1–#6, three per owner group |
 
 ---
 
@@ -89,6 +98,7 @@ schmittnet/
 ```bash
 # Tests
 npm test                        # unit + integration (Vitest)
+npm run test:watch              # Vitest in watch mode
 npm run test:coverage           # with coverage report
 npm run test:e2e                # Playwright (mobile viewport)
 

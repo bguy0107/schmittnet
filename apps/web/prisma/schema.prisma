@@ -132,14 +132,15 @@ model User {
 }
 
 model Location {
-  id        String   @id @default(uuid())
-  name      String
-  ownerId   String   @map("owner_id")
-  qrToken   String   @unique @map("qr_token")
-  qrActive  Boolean  @default(true) @map("qr_active")
-  address   String?
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id             String   @id @default(uuid())
+  name           String
+  locationNumber Int?     @unique @map("location_number")
+  ownerId        String   @map("owner_id")
+  qrToken        String   @unique @map("qr_token")
+  qrActive       Boolean  @default(true) @map("qr_active")
+  address        String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   owner         Owner         @relation(fields: [ownerId], references: [id])
   tickets       Ticket[]

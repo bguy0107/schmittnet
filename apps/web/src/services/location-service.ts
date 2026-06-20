@@ -6,6 +6,7 @@ import type { Role } from "@schmittnet/types";
 
 const createLocationSchema = z.object({
   name: z.string().min(2).max(100),
+  locationNumber: z.number().int().positive(),
   // Owner.id is a free-form string PK (seed data overrides the uuid() default
   // with human-readable ids), so don't require uuid format here.
   ownerId: z.string().min(1),
@@ -14,6 +15,7 @@ const createLocationSchema = z.object({
 
 const updateLocationSchema = z.object({
   name: z.string().min(2).max(100).optional(),
+  locationNumber: z.number().int().positive().optional(),
   address: z.string().max(200).optional(),
   qrActive: z.boolean().optional(),
   regenerateToken: z.boolean().optional(),

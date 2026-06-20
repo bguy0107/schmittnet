@@ -4,6 +4,7 @@ import type { Prisma } from "@prisma/client";
 const locationSelect = {
   id: true,
   name: true,
+  locationNumber: true,
   address: true,
   qrToken: true,
   qrActive: true,
@@ -39,6 +40,7 @@ export const locationRepository = {
 
   async create(data: {
     name: string;
+    locationNumber?: number | null;
     ownerId: string;
     qrToken: string;
     address?: string;
@@ -51,7 +53,7 @@ export const locationRepository = {
 
   async update(
     id: string,
-    data: Partial<{ name: string; address: string; qrToken: string; qrActive: boolean }>,
+    data: Partial<{ name: string; locationNumber: number | null; address: string; qrToken: string; qrActive: boolean }>,
   ) {
     return prisma.location.update({
       where: { id },
