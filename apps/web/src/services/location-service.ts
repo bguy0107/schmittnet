@@ -41,12 +41,17 @@ export const locationService = {
     return locationRepository.create({ ...data, qrToken });
   },
 
-  async getLocation(id: string, actorRole: Role) {
-    if (actorRole !== "SUPER_ADMIN") {
-      throw new ForbiddenError("Only super-admins may view location details");
-    }
+  async getLocation(id: string, actorRole: Role, actorOwnerId: string | null) {
     const location = await locationRepository.findById(id);
     if (!location) throw new NotFoundError("Location not found");
+
+    if (actorRole === "OWNER" || actorRole === "OWNER_STAFF") {
+      if (!actorOwnerId) throw new ForbiddenError("No owner context");
+      if (location.owner.id !== actorOwnerId) throw new ForbiddenError("Access denied");
+    } else if (actorRole !== "SUPER_ADMIN") {
+      throw new ForbiddenError("Access denied");
+    }
+
     return location;
   },
 

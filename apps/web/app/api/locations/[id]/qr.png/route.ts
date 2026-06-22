@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import QRCode from "qrcode";
 import { auth } from "@/auth";
 import { locationService } from "@/src/services/location-service";
-import { toApiError, AppError, UnauthorizedError, ForbiddenError } from "@/src/lib/errors";
+import { toApiError, AppError, UnauthorizedError } from "@/src/lib/errors";
 import { logger } from "@/src/lib/logger";
 
 type Params = { params: Promise<{ id: string }> };
@@ -13,14 +13,11 @@ export async function GET(_req: NextRequest, { params }: Params) {
   if (!session?.user) {
     return NextResponse.json(toApiError(new UnauthorizedError()), { status: 401 });
   }
-  if (session.user.role !== "SUPER_ADMIN") {
-    return NextResponse.json(toApiError(new ForbiddenError()), { status: 403 });
-  }
 
   const { id } = await params;
 
   try {
-    const location = await locationService.getLocation(id, session.user.role);
+    const location = await locationService.getLocation(id, session.user.role, session.user.ownerId);
 
     const hdrs = await headers();
     const host = hdrs.get("host") ?? "localhost:3000";

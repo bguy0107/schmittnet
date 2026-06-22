@@ -999,7 +999,7 @@ function LocationsTab() {
                   {loc.qrActive ? "QR active" : "QR inactive"}
                 </Badge>
                 <Button variant="outline" size="sm" asChild>
-                  <Link href={`/admin/locations/${loc.id}/qr`}>
+                  <Link href={`/locations/${loc.id}/qr`}>
                     <QrCode className="h-4 w-4" />
                     Print QR
                   </Link>

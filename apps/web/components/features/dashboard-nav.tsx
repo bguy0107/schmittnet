@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { LogOut, Menu, Ticket, BarChart2, Settings, User, Video } from "lucide-react";
+import { LogOut, Menu, Ticket, BarChart2, Settings, User, Video, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -46,6 +46,12 @@ const NAV_ITEMS: NavItem[] = [
     label: "Video Requests",
     icon: <Video className="h-4 w-4" />,
     roles: ["SUPER_ADMIN", "TECHNICIAN", "OWNER", "OWNER_STAFF"],
+  },
+  {
+    href: "/locations" as Route,
+    label: "Locations",
+    icon: <MapPin className="h-4 w-4" />,
+    roles: ["OWNER", "OWNER_STAFF"],
   },
   {
     href: "/admin",

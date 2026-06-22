@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { headers } from "next/headers";
 import Link from "next/link";
+import type { Route } from "next";
 import QRCode from "qrcode";
 import { auth } from "@/auth";
 import { locationService } from "@/src/services/location-service";
@@ -10,11 +11,17 @@ type Props = { params: Promise<{ id: string }> };
 
 export default async function QrPrintPage({ params }: Props) {
   const session = await auth();
-  if (!session?.user || session.user.role !== "SUPER_ADMIN") redirect("/login");
+  if (!session?.user) redirect("/login");
+  if (!["SUPER_ADMIN", "OWNER", "OWNER_STAFF"].includes(session.user.role)) redirect("/tickets");
 
   const { id } = await params;
 
-  const location = await locationService.getLocation(id, session.user.role).catch(() => notFound());
+  const location = await locationService
+    .getLocation(id, session.user.role, session.user.ownerId)
+    .catch(() => notFound());
+
+  const backHref = session.user.role === "SUPER_ADMIN" ? "/admin" : "/locations";
+  const backLabel = session.user.role === "SUPER_ADMIN" ? "← Back to admin" : "← Back to locations";
 
   const hdrs = await headers();
   const host = hdrs.get("host") ?? "localhost:3000";
@@ -33,10 +40,10 @@ export default async function QrPrintPage({ params }: Props) {
       {/* Controls — hidden when printing */}
       <div className="mb-6 flex items-center gap-3 print:hidden">
         <Link
-          href="/admin"
+          href={backHref as Route}
           className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
         >
-          ← Back to admin
+          {backLabel}
         </Link>
         <div className="ml-auto flex items-center gap-2">
           <a
