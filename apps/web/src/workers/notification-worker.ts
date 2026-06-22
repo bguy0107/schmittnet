@@ -260,6 +260,35 @@ async function processJob(
     ]);
   }
 
+  if (data.type === "TICKET_DECLINED") {
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: data.ticketId },
+      select: {
+        id: true,
+        description: true,
+        category: true,
+        location: { select: { name: true } },
+      },
+    });
+    if (!ticket) return;
+
+    const ref = data.ticketId.slice(0, 8).toUpperCase();
+    const label = ticket.category === "IT" ? "💻 IT" : "🔧 Maintenance";
+    const dEmbed = makeEmbed({
+      title: `${label} Ticket Approval Declined`,
+      url: ticketUrl(ticket.id),
+      color: 0xed4245,
+      fields: [
+        { name: "Location", value: ticket.location.name },
+        { name: "Issue", value: truncate(ticket.description) },
+        ...(data.notes ? [{ name: "Reason", value: truncate(data.notes, 200) }] : []),
+        { name: "Reference", value: `#${ref}` },
+      ],
+    });
+
+    await notifyDepartment(data.category, dEmbed);
+  }
+
   if (data.type === "VIDEO_REQUEST_OPENED") {
     const request = await prisma.videoRequest.findUnique({
       where: { id: data.videoRequestId },

@@ -7,6 +7,7 @@ export type NotificationJobData =
   | { type: "TICKET_OPENED"; ticketId: string; locationId: string; category: Category }
   | { type: "TICKET_CLAIMED"; ticketId: string; category: Category }
   | { type: "TICKET_APPROVED"; ticketId: string; category: Category }
+  | { type: "TICKET_DECLINED"; ticketId: string; category: Category; notes?: string }
   | { type: "AWAITING_APPROVAL"; ticketId: string; locationId: string }
   | { type: "RESOLVED"; ticketId: string; locationId: string }
   | { type: "APPROVAL_DECISION"; ticketId: string; recipientId: string; decision: "APPROVED" | "DECLINED" }
@@ -52,6 +53,17 @@ export const notificationService = {
       .add("ticket-approved", { type: "TICKET_APPROVED", ticketId, category })
       .catch((err: unknown) =>
         logger.error("Failed to enqueue TICKET_APPROVED notification", {
+          ticket_id: ticketId,
+          error: String(err),
+        }),
+      );
+  },
+
+  async enqueueTicketDeclined(ticketId: string, category: Category, notes?: string) {
+    await getQueue()
+      .add("ticket-declined", { type: "TICKET_DECLINED", ticketId, category, notes })
+      .catch((err: unknown) =>
+        logger.error("Failed to enqueue TICKET_DECLINED notification", {
           ticket_id: ticketId,
           error: String(err),
         }),
